@@ -19,11 +19,6 @@ class NodeProcessor {
 
     /**
      * Process a node and return next node ID
-     * param {Object} node - Node to process
-     * param {Object} conversation - Conversation object
-     * param {Object} flow - Flow object
-     * param {string} userInput - User input (for question/button/list nodes)
-     * returns {Promise<Object>} {nextNodeId, shouldWaitForInput, updatedSessionData}
      */
     async processNode(node, conversation, flow, userInput = null) {
 
@@ -55,7 +50,7 @@ class NodeProcessor {
                 return await this.processEndNode(node, conversation, flow);
 
             default:
-                logger.error('Unknown node type', { nodeType: node.type });
+                global.slashLogs(`Unknown node type ${node.type }`, true, true);
                 return { nextNodeId: null, shouldWaitForInput: false };
         }
     }
@@ -104,7 +99,6 @@ class NodeProcessor {
 
     /**
      * Process QUESTION node
-     * private
      */
     async processQuestionNode(node, conversation, flow, userInput) {
         // If no user input, send the question and wait
@@ -116,7 +110,7 @@ class NodeProcessor {
                 conversation_id: conversation.conversation_id,
                 flow_id: flow.flow_id,
                 sender: 'bot',
-                message_type: 'text',
+                message_type: 'question',
                 message_text: question,
                 node_id: node.id,
             });
@@ -138,7 +132,7 @@ class NodeProcessor {
                     nextNodeId: node.id, // Stay on same node
                     shouldWaitForInput: true,
                 };
-            } 
+            }
         }
 
         // Save collected data
@@ -325,7 +319,7 @@ class NodeProcessor {
     }
 
     /**
-     * Process WEBHOOK node
+     * Process WEBHOOK node 
      */
     async processWebhookNode(node, conversation, flow) {
         try {

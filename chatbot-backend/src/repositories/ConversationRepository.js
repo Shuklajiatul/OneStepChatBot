@@ -14,7 +14,6 @@ class ConversationRepository extends BaseRepository {
 
     /**
      * Get primary key column name
-     * @returns {string}
      */
     getPrimaryKey() {
         return 'conversation_id';
@@ -22,8 +21,6 @@ class ConversationRepository extends BaseRepository {
 
     /**
      * Create a new conversation
-     * @param {Object} conversationData - Conversation data
-     * @returns {Promise<Object>} Created conversation
      */
     async createConversation(conversationData) {
         const conversation = createConversation(conversationData);
@@ -32,9 +29,6 @@ class ConversationRepository extends BaseRepository {
 
     /**
      * Get active conversation by user phone and flow
-     * @param {string} userPhone - User phone number
-     * @param {string} flowId - Flow ID
-     * @returns {Promise<Object|null>} Active conversation or null
      */
     async getActiveConversation(userPhone, flowId) {
         try {
@@ -65,9 +59,6 @@ class ConversationRepository extends BaseRepository {
 
     /**
      * Get conversations by flow
-     * param {string} flowId - Flow ID
-     * param {number} limit - Maximum number of conversations
-     * returns {Promise<Object[]>} Array of conversations
      */
     async getConversationsByFlow(flowId, limit = 100) {
         try {
@@ -85,9 +76,6 @@ class ConversationRepository extends BaseRepository {
 
     /**
      * Get conversations by user phone
-     * @param {string} userPhone - User phone number
-     * @param {number} limit - Maximum number of conversations
-     * @returns {Promise<Object[]>} Array of conversations
      */
     async getConversationsByPhone(userPhone, limit = 100) {
         try {
@@ -162,6 +150,19 @@ class ConversationRepository extends BaseRepository {
     async setHumanTakeover(conversationId) {
         return this.update(conversationId, {
             status: CONVERSATION_STATUS.HUMAN_TAKEOVER,
+            last_message_at: new Date(),
+        });
+    }
+
+    /**
+     * Update conversation status
+     * @param {string} conversationId - Conversation ID
+     * @param {string} status - New status
+     * @returns {Promise<Object>} Updated conversation
+     */
+    async updateStatus(conversationId, status) {
+        return this.update(conversationId, {
+            status,
             last_message_at: new Date(),
         });
     }

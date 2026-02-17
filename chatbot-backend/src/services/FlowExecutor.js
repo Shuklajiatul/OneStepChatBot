@@ -25,15 +25,9 @@ class FlowExecutor {
 
     /**
      * Process incoming message
-     * param {string} flowId - Flow ID
-     * param {string} userPhone - User phone number
-     * param {string} userName - User name
-     * param {string} messageText - Message text
-     * param {string} platformUserId - Platform user ID
-     * param {string} channel - Channel (whatsapp, instagram, web)
      * returns {Promise<void>}
      */
-    async processMessage(flowId, userPhone, userName, messageText, platformUserId, channel = 'whatsapp') {
+    async processMessage(flowId, userPhone, userName, messageText, platformUserId, channel = 'whatsapp', isPreview = false, previewService = null) {
         try {
             global.slashLogs(`Processing message: ${JSON.stringify({ flowId, userPhone, messageText })}`, true, true);
 
@@ -63,29 +57,15 @@ class FlowExecutor {
             await this.analyticsRepository.trackMessageReceived(flowId);
 
             // Execute flow
-            await this.executeFlow(conversation, flowId, messageText);
+            await this.executeFlow(conversation, flowId, messageText, isPreview, previewService);
 
         } catch (error) {
-            logger.error('Error processing message', {
-                error: error.message,
-                stack: error.stack,
-                flowId,
-                userPhone,
-            });
+            global.slashLogs(`Error processing message: ${error.message}`, true, true);
             throw error;
         }
     }
 
-    /**
-     * Start a new conversation
-     * param {string} flowId - Flow ID
-     * param {string} userPhone - User phone number
-     * param {string} userName - User name
-     * param {string} platformUserId - Platform user ID
-     * param {string} channel - Channel
-     * returns {Promise<Object>} Created conversation
-     * private
-     */
+    // Start a new conversation
     async startConversation(flowId, userPhone, userName, platformUserId, channel) {
         global.slashLogs(`Starting new conversation: ${flowId} for userPhone: ${userPhone}`, true, true);
 
@@ -109,7 +89,7 @@ class FlowExecutor {
     /**
      * Execute flow from current node
      */
-    async executeFlow(conversation, flowId, userInput = null) {
+    async executeFlow(conversation, flowId, userInput = null, isPreview = false, previewService = null) {
         try {
             // Get flow
             const flow = await this.flowRepository.findById(flowId);
@@ -121,31 +101,40 @@ class FlowExecutor {
             // Parse flow data
             const flowData = parseFlowData(flow);
 
-            // Get user configuration for WhatsApp service
-            const UserRepository = require('../repositories/UserRepository');
-            const userRepository = new UserRepository();
-            const user = await userRepository.findById(flow.user_id);
+            // Initialize messaging service (WhatsApp or Preview)
+            let messagingService;
 
-            if (!user || !user.whatsapp_api_key || !user.whatsapp_phone_number_id) {
-                global.slashLogs(`User WhatsApp configuration missing: ${flow.user_id}`, true, true);
-                return;
+            if (isPreview && previewService) {
+                // Use preview service for testing
+                messagingService = previewService;
+                global.slashLogs('[PREVIEW MODE] Using PreviewService', true, true);
+            } else {
+                // Get user configuration for WhatsApp service
+                const UserRepository = require('../repositories/UserRepository');
+                const userRepository = new UserRepository();
+                const user = await userRepository.findById(flow.user_id);
+
+                if (!user || !user.whatsapp_api_key || !user.whatsapp_phone_number_id) {
+                    global.slashLogs(`User WhatsApp configuration missing: ${flow.user_id}`, true, true);
+                    return;
+                }
+
+                // Initialize WhatsApp service
+                messagingService = new WhatsAppService(
+                    user.whatsapp_api_key,
+                    user.whatsapp_phone_number_id
+                );
             }
-
-            // Initialize WhatsApp service
-            const whatsappService = new WhatsAppService(
-                user.whatsapp_api_key,
-                user.whatsapp_phone_number_id
-            );
 
             // Initialize node processor
             const nodeProcessor = new NodeProcessor(
-                whatsappService,
+                messagingService,
                 this.messageRepository,
                 this.collectedDataRepository
             );
 
             // Get current node
-            let currentNodeId = conversation.current_node_id;
+            let currentNodeId = conversation.current_node_id ? conversation.current_node_id.toString() : null;
             let shouldContinue = true;
             let iterationCount = 0;
             const maxIterations = 50; // Prevent infinite loops
@@ -171,6 +160,9 @@ class FlowExecutor {
                     flow,
                     userInput
                 );
+
+
+                global.slashLogs(`Node processed: ${currentNodeId} for flowId: ${flowId} also result ${result}`, true, true);
 
                 // Update session data if changed
                 if (result.updatedSessionData) {
@@ -205,19 +197,11 @@ class FlowExecutor {
             }
 
             if (iterationCount >= maxIterations) {
-                logger.error('Flow execution exceeded max iterations', {
-                    flowId,
-                    conversationId: conversation.conversation_id,
-                });
+                global.slashLogs(`Flow execution exceeded max iterations for flowId: ${flowId} and conversationId: ${conversation.conversation_id}`, true, true);
             }
 
         } catch (error) {
-            logger.error('Error executing flow', {
-                error: error.message,
-                stack: error.stack,
-                flowId,
-                conversationId: conversation.conversation_id,
-            });
+           global.slashLogs(`Error executing flow: ${error.message}`, true, true);
             throw error;
         }
     }
@@ -226,7 +210,7 @@ class FlowExecutor {
      * Complete a conversation
      */
     async completeConversation(conversationId, flowId) {
-        logger.info('Completing conversation', { conversationId });
+        global.slashLogs(`Completing conversation for conversationId: ${conversationId} and flowId: ${flowId}`, true, true);
 
         await this.conversationRepository.completeConversation(conversationId);
         await this.analyticsRepository.trackConversationCompleted(flowId);
@@ -236,7 +220,7 @@ class FlowExecutor {
      * Abandon a conversation (timeout or error)
      */
     async abandonConversation(conversationId, flowId) {
-        logger.info('Abandoning conversation', { conversationId });
+        global.slashLogs(`Abandoning conversation for conversationId: ${conversationId} and flowId: ${flowId}`, true, true);
 
         await this.conversationRepository.abandonConversation(conversationId);
         await this.analyticsRepository.trackConversationAbandoned(flowId);

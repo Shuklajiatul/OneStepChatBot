@@ -12,9 +12,8 @@ class AnalyticsRepository {
         this.db = databaseConfig;
     }
 
-    /**
-     * Increment a metric for a flow
-     */
+    // Increment a metric for a flow
+    
     async incrementMetric(flowId, metricName, incrementBy = 1) {
         try {
             const date = startOfDay(new Date());
@@ -27,13 +26,9 @@ class AnalyticsRepository {
 
             await this.db.execute(query, [incrementBy, flowId, date, metricName]);
 
-            logger.debug('Incremented metric', { flowId, metricName, incrementBy });
+            global.slashLogs("Metric incremented", true, true);
         } catch (error) {
-            logger.error('Error incrementing metric', {
-                error: error.message,
-                flowId,
-                metricName,
-            });
+            global.slashLogs("Error incrementing metric", true, true);
         }
     }
 
@@ -57,11 +52,7 @@ class AnalyticsRepository {
 
             return metrics;
         } catch (error) {
-            logger.error('Error getting metrics by date', {
-                error: error.message,
-                flowId,
-                date,
-            });
+            global.slashLogs("Error getting metrics by date", true, true);
             return {};
         }
     }
@@ -135,30 +126,28 @@ class AnalyticsRepository {
         await this.incrementMetric(flowId, 'conversations_abandoned');
     }
 
-    /**
-     * Track message sent
-     */
+    
+    //Track message sent
+      
     async trackMessageSent(flowId) {
         await this.incrementMetric(flowId, 'messages_sent');
     }
 
-    /**
-     * Track message received
-     */
+    
+    // Track message received
+    
     async trackMessageReceived(flowId) {
         await this.incrementMetric(flowId, 'messages_received');
     }
 
-    /**
-     * Track node visited
-     */
+    // Track node visited
+    
     async trackNodeVisited(flowId, nodeId) {
         await this.incrementMetric(flowId, `node_visited_${nodeId}`);
     }
 
-    /**
-     * Get summary metrics for a flow
-     */
+    // Get summary metrics for a flow
+   
     async getSummaryMetrics(flowId, days = 30) {
         try {
             const endDate = new Date();

@@ -2,6 +2,7 @@ const express = require('express');
 const flowRoutes = require('./flows');
 const userRoutes = require('./users');
 const webhookRoutes = require('./webhooks');
+const previewRoutes = require('./preview');
 
 const router = express.Router();
 
@@ -18,5 +19,6 @@ router.use('/flows', flowRoutes);
 router.use('/auth', userRoutes);
 router.use('/users', userRoutes);
 router.use('/webhooks', webhookRoutes);
+router.use('/preview', previewRoutes);
 
 module.exports = router;

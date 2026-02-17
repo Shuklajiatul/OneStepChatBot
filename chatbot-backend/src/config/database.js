@@ -11,10 +11,8 @@ class DatabaseConfig {
         this.isConnected = false;
     }
 
-    /**
-     * Initialize database connection
-     * returns {Promise<cassandra.Client>}
-     */
+     // Initialize database connection
+     
     async connect() {
         if (this.isConnected && this.client) {
             return this.client;
@@ -56,22 +54,17 @@ class DatabaseConfig {
             await this.client.connect();
             this.isConnected = true;
 
-            console.log('Successfully connected to ScyllaDB');
+            global.slashLogs('Successfully connected to ScyllaDB', true, true);
 
             return this.client;
         } catch (error) {
-            console.log('Failed to connect to ScyllaDB', {
-                error: error.message,
-                stack: error.stack,
-            });
+            global.slashLogs(`Failed to connect to ScyllaDB ${error.message}`, true, true);
             throw error;
         }
     }
 
-    /**
-     * Get database client instance
-     * returns {cassandra.Client}
-     */
+     // Get database client instance
+     
     getClient() {
         if (!this.isConnected || !this.client) {
             throw new Error('Database not connected. Call connect() first.');
@@ -79,10 +72,7 @@ class DatabaseConfig {
         return this.client;
     }
 
-    /**
-     * Close database connection
-     * returns {Promise<void>}
-     */
+    // Close database connection
     async disconnect() {
         if (this.client) {
             await this.client.shutdown();
@@ -91,13 +81,7 @@ class DatabaseConfig {
         }
     }
 
-    /**
-     * Execute a query with parameters
-     * param {string} query - CQL query
-     * param {Array} params - Query parameters
-     * param {Object} options - Query options
-     * returns {Promise<Object>}
-     */
+    // Execute a query with parameters
     async execute(query, params = [], options = {}) {
         try {
             const client = this.getClient();
@@ -118,9 +102,6 @@ class DatabaseConfig {
 
     /**
      * Execute a batch of queries
-     * param {Array} queries - Array of query objects {query, params}
-     * param {Object} options - Batch options
-     * returns {Promise<Object>}
      */
     async batch(queries, options = {}) {
         try {
@@ -141,7 +122,6 @@ class DatabaseConfig {
 
     /**
      * Check if database is healthy
-     * returns {Promise<boolean>}
      */
     async healthCheck() {
         try {

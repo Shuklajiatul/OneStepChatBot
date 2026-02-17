@@ -57,10 +57,11 @@ const validateFlowStructure = (flowData) => {
     }
 
     // Check for start node
-    const hasStartNode = flowData.nodes.some((node) => node.id === 'start');
-    if (!hasStartNode) {
-        errors.push('Flow must have a start node with id "start"');
-    }
+    // Check for start node - REMOVED strict 'start' ID check to support UUIDs
+    // const hasStartNode = flowData.nodes.some((node) => node.id === 'start');
+    // if (!hasStartNode) {
+    //     errors.push('Flow must have a start node with id "start"');
+    // }
 
     // Validate each node
     flowData.nodes.forEach((node, index) => {

@@ -6,22 +6,6 @@
 const { CONVERSATION_STATUS, CHANNELS } = require('../config/constants');
 
 /**
- *  Conversation:
- *  conversation_id - Unique conversation identifier
- *  flow_id - Associated flow ID
- *  user_phone - User's phone number
- *  user_name - User's name
- *  platform_user_id - Platform-specific user ID
- *  current_node_id - Current node in the flow
- *  session_data - JSON string of session variables
- *  status - Conversation status (active, completed, abandoned)
- *  channel - Channel (whatsapp, instagram, web)
- *  started_at - Conversation start time
- *  last_message_at - Last message timestamp
- *  completed_at - Completion timestamp
- */
-
-/**
  * Create a new conversation object
 */
 const createConversation = (data) => {
@@ -31,7 +15,7 @@ const createConversation = (data) => {
         user_phone: data.user_phone,
         user_name: data.user_name || '',
         platform_user_id: data.platform_user_id,
-        current_node_id: data.current_node_id || 'start',
+        current_node_id: data.current_node_id || null, // Should be UUID, not 'start'
         session_data: typeof data.session_data === 'string' ? data.session_data : JSON.stringify(data.session_data || {}),
         status: data.status || CONVERSATION_STATUS.ACTIVE,
         channel: data.channel || CHANNELS.WHATSAPP,

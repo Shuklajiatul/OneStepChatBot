@@ -64,6 +64,7 @@ const CHANNELS = {
     WHATSAPP: 'whatsapp',
     INSTAGRAM: 'instagram',
     WEB: 'web',
+    PREVIEW: 'preview',
 };
 
 // User Plans
