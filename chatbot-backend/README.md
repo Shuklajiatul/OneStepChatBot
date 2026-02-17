@@ -15,13 +15,11 @@ A production-ready WhatsApp/Instagram chatbot platform backend built with Node.j
 
 ## Tech Stack
 
-- **Runtime**: Node.js 18+
+- **Runtime**: Node.js 
 - **Framework**: Express.js
 - **Database**: ScyllaDB (Cassandra-compatible)
 - **Authentication**: JWT
-- **Validation**: Joi
-- **Logging**: Winston
-- **API Integration**: Axios
+
 
 ## Prerequisites
 
@@ -29,71 +27,8 @@ A production-ready WhatsApp/Instagram chatbot platform backend built with Node.j
 - ScyllaDB or Apache Cassandra
 - WhatsApp Business API credentials
 
-## Installation
-
-1. **Clone the repository**
-   ```bash
-   cd chatbot-backend
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Configure environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Edit `.env` and configure:
-   - Database connection (ScyllaDB)
-   - JWT secrets
-   - WhatsApp API credentials
-   - Other settings
-
-4. **Initialize database schema**
-   ```bash
-   npm run db:schema
-   ```
-
-## Running the Application
-
-### Development
-```bash
-npm run dev
-```
-
-### Production
-```bash
-npm start
-```
 
 ## API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `POST /api/auth/refresh` - Refresh access token
-
-### User Management
-- `GET /api/users/me` - Get current user profile
-- `PUT /api/users/me` - Update user profile
-
-### Flow Management
-- `POST /api/flows` - Create new flow
-- `GET /api/flows` - Get all flows
-- `GET /api/flows/:id` - Get flow by ID
-- `PUT /api/flows/:id` - Update flow
-- `DELETE /api/flows/:id` - Delete flow
-- `POST /api/flows/:id/publish` - Publish flow
-- `POST /api/flows/:id/unpublish` - Unpublish flow
-
-### Webhooks
-- `GET /api/webhooks/whatsapp` - Verify WhatsApp webhook
-- `POST /api/webhooks/whatsapp` - Receive WhatsApp messages
-- `GET /api/webhooks/instagram` - Verify Instagram webhook
-- `POST /api/webhooks/instagram` - Receive Instagram messages
 
 ## Flow Structure
 
