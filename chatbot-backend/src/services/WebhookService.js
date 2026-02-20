@@ -19,11 +19,7 @@ class WebhookService {
         const { url, method = 'POST', headers = {}, body = {} } = webhookConfig;
 
         try {
-            logger.info('Calling webhook', {
-                url,
-                method,
-                conversationId: conversation.conversation_id,
-            });
+            global.slashLogs(`Calling webhook ${url}`, true, true);
 
             const response = await retryWithBackoff(
                 async () => {
@@ -43,11 +39,7 @@ class WebhookService {
                 parseInt(process.env.WEBHOOK_MAX_RETRIES || '3', 10)
             );
 
-            logger.info('Webhook call successful', {
-                url,
-                status: response.status,
-                conversationId: conversation.conversation_id,
-            });
+            global.slashLogs(`Webhook call successful ${url}`, true, true);
 
             return {
                 success: true,
@@ -56,12 +48,7 @@ class WebhookService {
                 headers: response.headers,
             };
         } catch (error) {
-            logger.error('Webhook call failed', {
-                error: error.message,
-                url,
-                conversationId: conversation.conversation_id,
-                response: error.response?.data,
-            });
+            global.slashLogs(`Webhook call failed ${url}`, true, true);
 
             throw new ExternalAPIError('Webhook', error.message, error.response?.status);
         }
@@ -136,10 +123,7 @@ class WebhookService {
 
             return response.status < 500;
         } catch (error) {
-            logger.error('Webhook connection test failed', {
-                error: error.message,
-                url,
-            });
+            global.slashLogs(`Webhook connection test failed ${url}`, true, true);
             return false;
         }
     }

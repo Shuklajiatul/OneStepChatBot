@@ -50,7 +50,6 @@ class BaseRepository {
         } catch (error) {
 
             global.slashLogs(`Error creating record in ${this.tableName}: ${error.message}`, true, true);
-            logger.error('Database query error', { query: error.query || 'N/A', error: error.message, stack: error.stack });
             throw new DatabaseError(`Failed to create record in ${this.tableName}`, error);
         }
     }
@@ -155,7 +154,7 @@ class BaseRepository {
 
             await this.db.execute(query, values);
 
-            logger.info(`Record updated in ${this.tableName}`, { id });
+            global.slashLogs(`Record updated in ${this.tableName}: ${JSON.stringify(updateData)}`, true, true);
 
             // Return updated record
             return this.findById(id);
@@ -163,11 +162,7 @@ class BaseRepository {
             if (error instanceof NotFoundError) {
                 throw error;
             }
-            logger.error(`Error updating record in ${this.tableName}`, {
-                error: error.message,
-                id,
-                data,
-            });
+            global.slashLogs(`Error updating record in ${this.tableName}: ${error.message}`, true, true);
             throw new DatabaseError(`Failed to update record in ${this.tableName}`, error);
         }
     }

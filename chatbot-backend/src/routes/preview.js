@@ -10,7 +10,7 @@ const {
     endPreviewSchema 
 } = require('../validators/previewValidators');
 
-const router = express.Router();
+const router            = express.Router();
 const previewController = new PreviewController();
 
 // Preview Routes

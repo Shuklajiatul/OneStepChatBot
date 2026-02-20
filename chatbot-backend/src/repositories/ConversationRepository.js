@@ -48,11 +48,7 @@ class ConversationRepository extends BaseRepository {
             // Return the most recent conversation
             return this.mapRow(result.rows[0]);
         } catch (error) {
-            logger.error('Error getting active conversation', {
-                error: error.message,
-                userPhone,
-                flowId,
-            });
+            global.slashLogs(`Error getting active conversation ${error.message}`, true, true);
             throw error;
         }
     }
@@ -66,10 +62,7 @@ class ConversationRepository extends BaseRepository {
             const result = await this.db.execute(query, [flowId, limit]);
             return result.rows.map((row) => this.mapRow(row));
         } catch (error) {
-            logger.error('Error getting conversations by flow', {
-                error: error.message,
-                flowId,
-            });
+            global.slashLogs(`Error getting conversations by flow ${error.message}`, true, true);
             throw error;
         }
     }
@@ -83,10 +76,7 @@ class ConversationRepository extends BaseRepository {
             const result = await this.db.execute(query, [userPhone, limit]);
             return result.rows.map((row) => this.mapRow(row));
         } catch (error) {
-            logger.error('Error getting conversations by phone', {
-                error: error.message,
-                userPhone,
-            });
+            global.slashLogs(`Error getting conversations by phone ${error.message}`, true, true);
             throw error;
         }
     }
@@ -179,10 +169,7 @@ class ConversationRepository extends BaseRepository {
             const result = await this.db.execute(query, [status, limit]);
             return result.rows.map((row) => this.mapRow(row));
         } catch (error) {
-            logger.error('Error getting conversations by status', {
-                error: error.message,
-                status,
-            });
+            global.slashLogs(`Error getting conversations by status ${error.message}`, true, true);
             throw error;
         }
     }

@@ -51,10 +51,7 @@ class MessageRepository extends BaseRepository {
                 message.message_type,
             ]);
         } catch (error) {
-            logger.error('Error inserting into conversation index', {
-                error: error.message,
-                messageId: message.message_id,
-            });
+            global.slashLogs(`Error inserting into conversation index ${error.message}`, true, true);
         }
     }
 
@@ -71,10 +68,7 @@ class MessageRepository extends BaseRepository {
             const result = await this.db.execute(query, [conversationId, limit]);
             return result.rows.map((row) => this.mapRow(row));
         } catch (error) {
-            logger.error('Error getting messages by conversation', {
-                error: error.message,
-                conversationId,
-            });
+            global.slashLogs(`Error getting messages by conversation ${error.message}`, true, true);
             throw error;
         }
     }
@@ -88,10 +82,7 @@ class MessageRepository extends BaseRepository {
             const result = await this.db.execute(query, [flowId, limit]);
             return result.rows.map((row) => this.mapRow(row));
         } catch (error) {
-            logger.error('Error getting messages by flow', {
-                error: error.message,
-                flowId,
-            });
+            global.slashLogs(`Error getting messages by flow ${error.message}`, true, true);
             throw error;
         }
     }
@@ -122,10 +113,7 @@ class MessageRepository extends BaseRepository {
                 await this.updateDeliveryStatus(messageId, status);
             }
         } catch (error) {
-            logger.error('Error updating message by WhatsApp ID', {
-                error: error.message,
-                whatsappMessageId,
-            });
+            global.slashLogs(`Error updating message by WhatsApp ID ${error.message}`, true, true);
         }
     }
 
@@ -147,10 +135,7 @@ class MessageRepository extends BaseRepository {
 
             return this.mapRow(result.rows[0]);
         } catch (error) {
-            logger.error('Error getting last message', {
-                error: error.message,
-                conversationId,
-            });
+            global.slashLogs(`Error getting last message ${error.message}`, true, true);
             throw error;
         }
     }
@@ -167,10 +152,7 @@ class MessageRepository extends BaseRepository {
             const result = await this.db.execute(query, [conversationId]);
             return parseInt(result.rows[0].count, 10);
         } catch (error) {
-            logger.error('Error counting messages', {
-                error: error.message,
-                conversationId,
-            });
+            global.slashLogs(`Error counting messages ${error.message}`, true, true);
             return 0;
         }
     }
@@ -215,7 +197,7 @@ class MessageRepository extends BaseRepository {
             });
 
         } catch (error) {
-            logger.error('Error fetching full message details', { error: error.message, conversationId });
+            global.slashLogs(`Error fetching full message details ${error.message}`, true, true);
             // Fallback to index messages if main fetch fails
             return indexMessages;
         }
@@ -242,10 +224,7 @@ class MessageRepository extends BaseRepository {
 
             global.slashLogs(`Deleted all messages for conversation: ${conversationId}`, true, true);
         } catch (error) {
-            logger.error('Error deleting messages by conversation', {
-                error: error.message,
-                conversationId,
-            });
+            global.slashLogs(`Error deleting messages by conversation ${error.message}`, true, true);
             throw error;
         }
     }

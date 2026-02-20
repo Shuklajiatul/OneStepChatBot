@@ -46,10 +46,7 @@ class UserRepository extends BaseRepository {
 
             return this.mapRow(result.rows[0]);
         } catch (error) {
-            logger.error('Error finding user by email', {
-                error: error.message,
-                email,
-            });
+            global.slashLogs(`Error finding user by email ${error.message}`, true, true);
             throw error;
         }
     }
@@ -144,10 +141,7 @@ class UserRepository extends BaseRepository {
                 });
             }
         } catch (error) {
-            logger.error('Error decrementing flow count', {
-                error: error.message,
-                userId,
-            });
+            global.slashLogs(`Error decrementing flow count ${error.message}`, true, true);
         }
     }
 
@@ -165,10 +159,7 @@ class UserRepository extends BaseRepository {
                 });
             }
         } catch (error) {
-            logger.error('Error incrementing conversation count', {
-                error: error.message,
-                userId,
-            });
+            global.slashLogs(`Error incrementing conversation count ${error.message}`, true, true);
         }
     }
 

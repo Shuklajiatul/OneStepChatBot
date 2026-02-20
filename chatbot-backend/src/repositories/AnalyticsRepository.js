@@ -95,12 +95,7 @@ class AnalyticsRepository {
 
             return Object.values(metricsByDate);
         } catch (error) {
-            logger.error('Error getting metrics range', {
-                error: error.message,
-                flowId,
-                startDate,
-                endDate,
-            });
+            global.slashLogs(`Error getting metrics range ${error.message}`, true, true);
             return [];
         }
     }
@@ -184,10 +179,7 @@ class AnalyticsRepository {
 
             return summary;
         } catch (error) {
-            logger.error('Error getting summary metrics', {
-                error: error.message,
-                flowId,
-            });
+            global.slashLogs(`Error getting summary metrics ${error.message}`, true, true);
             return {};
         }
     }

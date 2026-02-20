@@ -16,11 +16,7 @@ class ConditionEvaluator {
 
             return this.compareValues(variableValue, condition.operator, condition.value);
         } catch (error) {
-            logger.error('Error evaluating condition', {
-                error: error.message,
-                condition,
-                conversationId: conversation.conversation_id,
-            });
+            global.slashLogs(`Error evaluating condition ${error.message}`, true, true);
             return false;
         }
     }
@@ -112,12 +108,12 @@ class ConditionEvaluator {
                     const regex = new RegExp(right);
                     return regex.test(left);
                 } catch (error) {
-                    logger.error('Invalid regex pattern', { pattern: right });
+                    global.slashLogs(`Invalid regex pattern ${error.message}`, true, true);
                     return false;
                 }
 
             default:
-                logger.warn('Unknown operator', { operator });
+                global.slashLogs(`Unknown operator ${error.message}`, true, true);
                 return false;
         }
     }

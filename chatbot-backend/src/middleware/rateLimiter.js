@@ -18,10 +18,7 @@ const apiLimiter = rateLimit({
     standardHeaders: true, // Return rate limit info in headers
     legacyHeaders: false,
     handler: (req, res) => {
-        logger.warn('Rate limit exceeded', {
-            ip: req.ip,
-            path: req.path,
-        });
+        global.slashLogs(`Rate limit exceeded ${req.ip} ${req.path}`, true, true);
 
         res.status(429).json({
             error: {
@@ -48,10 +45,7 @@ const authLimiter = rateLimit({
     legacyHeaders: false,
     skipSuccessfulRequests: true, // Don't count successful requests
     handler: (req, res) => {
-        logger.warn('Auth rate limit exceeded', {
-            ip: req.ip,
-            path: req.path,
-        });
+        global.slashLogs(`Auth rate limit exceeded ${req.ip} ${req.path}`, true, true);
 
         res.status(429).json({
             error: {

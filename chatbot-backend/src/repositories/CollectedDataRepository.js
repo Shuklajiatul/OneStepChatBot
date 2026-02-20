@@ -53,11 +53,7 @@ class CollectedDataRepository extends BaseRepository {
                 node_id: nodeId,
             };
         } catch (error) {
-            logger.error('Error saving collected variable', {
-                error: error.message,
-                conversationId,
-                variableName,
-            });
+            global.slashLogs(`Error saving collected variable ${error.message}`, true, true);
             throw error;
         }
     }
@@ -73,10 +69,7 @@ class CollectedDataRepository extends BaseRepository {
             const result = await this.db.execute(query, [conversationId]);
             return result.rows.map((row) => this.mapRow(row));
         } catch (error) {
-            logger.error('Error getting collected data', {
-                error: error.message,
-                conversationId,
-            });
+            global.slashLogs(`Error getting collected data ${error.message}`, true, true);
             throw error;
         }
     }
@@ -101,11 +94,7 @@ class CollectedDataRepository extends BaseRepository {
 
             return result.rows[0].variable_value;
         } catch (error) {
-            logger.error('Error getting variable', {
-                error: error.message,
-                conversationId,
-                variableName,
-            });
+            global.slashLogs(`Error getting variable ${error.message}`, true, true);
             throw error;
         }
     }
@@ -126,10 +115,7 @@ class CollectedDataRepository extends BaseRepository {
 
             return result;
         } catch (error) {
-            logger.error('Error getting collected data as object', {
-                error: error.message,
-                conversationId,
-            });
+            global.slashLogs(`Error getting collected data as object ${error.message}`, true, true);
             throw error;
         }
     }
@@ -143,12 +129,9 @@ class CollectedDataRepository extends BaseRepository {
         try {
             const query = `DELETE FROM ${this.tableName} WHERE conversation_id = ?`;
             await this.db.execute(query, [conversationId]);
-            logger.info('Deleted collected data for conversation', { conversationId });
+            global.slashLogs(`Deleted collected data for conversation ${conversationId}`, true, true);
         } catch (error) {
-            logger.error('Error deleting collected data', {
-                error: error.message,
-                conversationId,
-            });
+            global.slashLogs(`Error deleting collected data ${error.message}`, true, true);
             throw error;
         }
     }

@@ -91,11 +91,7 @@ class DatabaseConfig {
             });
             return result;
         } catch (error) {
-            logger.error('Database query error', {
-                query,
-                error: error.message,
-                stack: error.stack,
-            });
+            global.slashLogs(`Database query error ${error.message}`, true, true);
             throw error;
         }
     }
@@ -112,10 +108,7 @@ class DatabaseConfig {
             });
             return result;
         } catch (error) {
-            logger.error('Database batch error', {
-                error: error.message,
-                stack: error.stack,
-            });
+            global.slashLogs(`Database batch error ${error.message}`, true, true);
             throw error;
         }
     }
@@ -128,7 +121,7 @@ class DatabaseConfig {
             await this.execute('SELECT now() FROM system.local');
             return true;
         } catch (error) {
-            logger.error('Database health check failed', { error: error.message });
+            global.slashLogs(`Database health check failed ${error.message}`, true, true);
             return false;
         }
     }

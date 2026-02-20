@@ -16,9 +16,6 @@ class WhatsAppService {
 
     /**
      * Send a text message
-     * param to - Recipient phone number
-     * param text - Message text
-     * returns API response
      */
     async sendTextMessage(to, text) {
         try {
@@ -40,10 +37,6 @@ class WhatsAppService {
 
     /**
      * Send an interactive button message
-     * param {string} to - Recipient phone number
-     * param {string} bodyText - Message body text
-     * param {Array} buttons - Array of button objects {id, title}
-     * returns {Promise<Object>} API response
      */
     async sendButtonMessage(to, bodyText, buttons) {
         try {
@@ -83,11 +76,6 @@ class WhatsAppService {
 
     /**
      * Send an interactive list message
-     *  to - Recipient phone number
-     *  bodyText - Message body text
-     *  buttonText - List button text
-     *  sections - Array of section objects
-     *  API response
      */
     async sendListMessage(to, bodyText, buttonText, sections) {
         try {
@@ -115,20 +103,16 @@ class WhatsAppService {
                 },
             });
 
-            logger.info('List message sent', { to, messageId: response.messages?.[0]?.id });
+            global.slashLogs(`List message sent ${to} for messageId: ${response.messages?.[0]?.id}`, true, true);
             return response;
         } catch (error) {
-            logger.error('Failed to send list message', { error: error.message, to });
+            global.slashLogs(`Failed to send list message ${to} for error: ${error.message}`, true, true);
             throw error;
         }
     }
 
     /**
      * Send an image message
-     * param {string} to - Recipient phone number
-     * param {string} imageUrl - Image URL
-     * param {string} caption - Optional caption
-     * returns {Promise<Object>} API response
      */
     async sendImageMessage(to, imageUrl, caption = '') {
         try {
@@ -143,21 +127,16 @@ class WhatsAppService {
                 },
             });
 
-            logger.info('Image message sent', { to, messageId: response.messages?.[0]?.id });
+            global.slashLogs(`Image message sent ${to} for messageId: ${response.messages?.[0]?.id}`, true, true);
             return response;
         } catch (error) {
-            logger.error('Failed to send image message', { error: error.message, to });
+            global.slashLogs(`Failed to send image message ${to} for error: ${error.message}`, true, true);
             throw error;
         }
     }
 
     /**
      * Send a document message
-     * to - Recipient phone number
-     * documentUrl - Document URL
-     * filename - Filename
-     * caption - Optional caption
-     * returns API response
      */
     async sendDocumentMessage(to, documentUrl, filename, caption = '') {
         try {
@@ -173,18 +152,16 @@ class WhatsAppService {
                 },
             });
 
-            logger.info('Document message sent', { to, messageId: response.messages?.[0]?.id });
+            global.slashLogs(`Document message sent ${to} for messageId: ${response.messages?.[0]?.id}`, true, true);
             return response;
         } catch (error) {
-            logger.error('Failed to send document message', { error: error.message, to });
+            global.slashLogs(`Failed to send document message ${to} for error: ${error.message}`, true, true);
             throw error;
         }
     }
 
     /**
      * Mark message as read
-     *  {string} messageId - Message ID to mark as read
-     *  {Promise<Object>} API response
      */
     async markAsRead(messageId) {
         try {
@@ -196,17 +173,13 @@ class WhatsAppService {
 
             return response;
         } catch (error) {
-            logger.error('Failed to mark message as read', { error: error.message, messageId });
+            global.slashLogs(`Failed to mark message as read ${messageId} for error: ${error.message}`, true, true);
             // Don't throw, this is not critical
         }
     }
 
     /**
      * Make API request to WhatsApp
-     * param {string} method - HTTP method
-     * param {string} endpoint - API endpoint
-     * param {Object} data - Request data
-     * returns {Promise<Object>} API response
      * private
      */
     async makeRequest(method, endpoint, data) {

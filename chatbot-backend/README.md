@@ -136,13 +136,6 @@ The API uses standard HTTP status codes and returns errors in this format:
 }
 ```
 
-## Logging
-
-Logs are written to:
-- Console (all environments)
-- `logs/application-YYYY-MM-DD.log` (production)
-- `logs/error-YYYY-MM-DD.log` (errors only)
-
 ## Security
 
 - JWT-based authentication

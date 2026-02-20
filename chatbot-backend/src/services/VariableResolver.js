@@ -30,10 +30,7 @@ class VariableResolver {
             const value = this.getNestedValue(allData, trimmedPath);
 
             if (value === null || value === undefined) {
-                logger.warn('Variable not found', {
-                    variable: trimmedPath,
-                    conversationId: conversation.conversation_id,
-                });
+                global.slashLogs(`Variable not found ${error.message}`, true, true);
                 return match; // Keep original placeholder if not found
             }
 

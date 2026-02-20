@@ -44,7 +44,7 @@ app.use(apiPrefix, routes);
 // 404 handler
 app.use(notFoundHandler);
 
-// Error handler (must be last)
+// Error handler
 app.use(errorHandler);
 
 module.exports = app;
