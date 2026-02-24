@@ -91,7 +91,7 @@ class DatabaseConfig {
             });
             return result;
         } catch (error) {
-            global.slashLogs(`Database query error ${error.message}`, true, true);
+            global.slashLogs(`Database query error ${error.message} for query ${query} and params ${params}`, true, true);
             throw error;
         }
     }

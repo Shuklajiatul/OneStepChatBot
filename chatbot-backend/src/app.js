@@ -16,14 +16,19 @@ require('express-async-errors');
 
 const app = express();
 
+// Trust the first proxy hop (e.g. Nginx) so express-rate-limit can correctly identify client IPs from the X-Forwarded-For header.
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 
 // CORS
-app.use(cors({
-    origin: '*',
-    credentials: true,
-}));
+// app.use(cors({
+//     origin: '*',
+//     credentials: true,
+// }));
+
+app.use(cors());
 
 // Compression
 app.use(compression());

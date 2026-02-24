@@ -165,8 +165,6 @@ class UserRepository extends BaseRepository {
 
     /**
      * Get user with safe data (override to return safe user by default)
-     * param {string} id - User ID
-     * returns {Promise<Object|null>} Safe user or null
      */
     async findById(id) {
         const user = await super.findById(id);
@@ -175,8 +173,6 @@ class UserRepository extends BaseRepository {
 
     /**
      * Get safe user by ID (for API responses)
-     * param {string} id - User ID
-     * returns {Promise<Object|null>} Safe user or null
      */
     async getSafeUserById(id) {
         const user = await this.findById(id);

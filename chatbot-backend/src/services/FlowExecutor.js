@@ -1,12 +1,12 @@
-const logger = require('../config/logger');
-const FlowRepository = require('../repositories/FlowRepository');
-const ConversationRepository = require('../repositories/ConversationRepository');
-const MessageRepository = require('../repositories/MessageRepository');
-const CollectedDataRepository = require('../repositories/CollectedDataRepository');
-const AnalyticsRepository = require('../repositories/AnalyticsRepository');
-const NodeProcessor = require('./NodeProcessor');
-const WhatsAppService = require('./WhatsAppService');
-const { parseFlowData } = require('../models/Flow');
+const logger                                  = require('../config/logger');
+const FlowRepository                          = require('../repositories/FlowRepository');
+const ConversationRepository                  = require('../repositories/ConversationRepository');
+const MessageRepository                       = require('../repositories/MessageRepository');
+const CollectedDataRepository                 = require('../repositories/CollectedDataRepository');
+const AnalyticsRepository                     = require('../repositories/AnalyticsRepository');
+const NodeProcessor                           = require('./NodeProcessor');
+const WhatsAppService                         = require('./WhatsAppService');
+const { parseFlowData }                       = require('../models/Flow');
 const { CONVERSATION_STATUS, MESSAGE_SENDER } = require('../config/constants');
 
 /**
@@ -16,16 +16,15 @@ const { CONVERSATION_STATUS, MESSAGE_SENDER } = require('../config/constants');
 
 class FlowExecutor {
     constructor() {
-        this.flowRepository = new FlowRepository();
-        this.conversationRepository = new ConversationRepository();
-        this.messageRepository = new MessageRepository();
+        this.flowRepository          = new FlowRepository();
+        this.conversationRepository  = new ConversationRepository();
+        this.messageRepository       = new MessageRepository();
         this.collectedDataRepository = new CollectedDataRepository();
-        this.analyticsRepository = new AnalyticsRepository();
+        this.analyticsRepository     = new AnalyticsRepository();
     }
 
     /**
      * Process incoming message
-     * returns {Promise<void>}
      */
     async processMessage(flowId, userPhone, userName, messageText, platformUserId, channel = 'whatsapp', isPreview = false, previewService = null) {
         try {
@@ -69,12 +68,19 @@ class FlowExecutor {
     async startConversation(flowId, userPhone, userName, platformUserId, channel) {
         global.slashLogs(`Starting new conversation: ${flowId} for userPhone: ${userPhone}`, true, true);
 
+        // Dynamically determine the start node from flow data
+        const flow = await this.flowRepository.findById(flowId);
+        const flowData = typeof flow.flow_data === 'string' ? JSON.parse(flow.flow_data) : flow.flow_data;
+        const startNodeId = flowData.nodes.find(n => n.type === 'start')?.id || flowData.nodes[0]?.id;
+
+        global.slashLogs(`Start node determined: ${startNodeId} for flowId: ${flowId}`, true, true);
+
         const conversation = await this.conversationRepository.createConversation({
             flow_id: flowId,
             user_phone: userPhone,
             user_name: userName,
             platform_user_id: platformUserId,
-            current_node_id: 'start',
+            current_node_id: startNodeId,
             channel,
             status: CONVERSATION_STATUS.ACTIVE,
         });
@@ -114,15 +120,15 @@ class FlowExecutor {
                 const userRepository = new UserRepository();
                 const user = await userRepository.findById(flow.user_id);
 
-                if (!user || !user.whatsapp_api_key || !user.whatsapp_phone_number_id) {
-                    global.slashLogs(`User WhatsApp configuration missing: ${flow.user_id}`, true, true);
-                    return;
-                }
+                // if (!user || !user.whatsapp_api_key || !user.whatsapp_phone_number_id) {
+                //     global.slashLogs(`User WhatsApp configuration missing: ${flow.user_id}`, true, true);
+                //     return;
+                // }
 
                 // Initialize WhatsApp service
                 messagingService = new WhatsAppService(
-                    user.whatsapp_api_key,
-                    user.whatsapp_phone_number_id
+                    user.whatsapp_api_key || process.env.WHATSAPP_ACCESS_TOKEN,
+                    user.whatsapp_phone_number_id || process.env.WHATSAPP_PHONE_NUMBER_ID
                 );
             }
 

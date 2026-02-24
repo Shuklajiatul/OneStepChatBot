@@ -20,17 +20,14 @@ class FlowRepository extends BaseRepository {
         return 'flow_id';
     }
 
-    /**
-     * Create a new flow
-     */
+    // Create a new flow
     async createFlow(flowData) {
         const flow = createFlow(flowData);
         return this.create(flow);
     }
 
-    /**
-     * Get all flows for a user
-     */
+    // Get all flows for a user
+     
     async getFlowsByUser(userId, limit = 100) {
         return this.findMany({ user_id: userId }, limit);
     }
@@ -154,10 +151,9 @@ class FlowRepository extends BaseRepository {
      * param {number} limit - Maximum number of flows
      * returns {Promise<Object[]>} Array of flows
      */
-    async getFlowsByStatus(status, limit = 100) {
+    async getFlowsByStatus(query, params = []) {
         try {
-            const query = `SELECT * FROM ${this.tableName} WHERE status = ? LIMIT ? ALLOW FILTERING`;
-            const result = await this.db.execute(query, [status, limit]);
+            const result = await this.db.execute(query, params);
             return result.rows.map((row) => this.mapRow(row));
         } catch (error) {
             global.slashLogs(`Error getting flows by status ${error.message}`, true, true);

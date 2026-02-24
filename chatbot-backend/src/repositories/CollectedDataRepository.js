@@ -11,22 +11,14 @@ class CollectedDataRepository extends BaseRepository {
         super('collected_data');
     }
 
-    /**
-     * Get primary key column name
-     * returns {string}
-     */
+    // Get primary key column name
+     
     getPrimaryKey() {
         return 'conversation_id';
     }
 
-    /**
-     * Save collected variable
-     * conversationId - Conversation ID
-     * variableName - Variable name
-     * variableValue - Variable value
-     * nodeId - Node ID that collected the data
-     * returns {Promise<Object>} Saved data
-     */
+    // Save collected variable
+     
     async saveVariable(conversationId, variableName, variableValue, nodeId = null) {
         try {
             const query = `
@@ -58,11 +50,8 @@ class CollectedDataRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Get all collected data for a conversation
-     * param {string} conversationId - Conversation ID
-     * returns {Promise<Object[]>} Array of collected data
-     */
+    // Get all collected data for a conversation
+    
     async getByConversation(conversationId) {
         try {
             const query = `SELECT * FROM ${this.tableName} WHERE conversation_id = ?`;
@@ -74,12 +63,8 @@ class CollectedDataRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Get specific variable value
-     * param {string} conversationId - Conversation ID
-     * param {string} variableName - Variable name
-     * returns {Promise<string|null>} Variable value or null
-     */
+    // Get specific variable value
+     
     async getVariable(conversationId, variableName) {
         try {
             const query = `
@@ -99,11 +84,7 @@ class CollectedDataRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Get collected data as key-value object
-     * param {string} conversationId - Conversation ID
-     * returns {Promise<Object>} Object with variable names as keys
-     */
+    // Get collected data as key-value object
     async getAsObject(conversationId) {
         try {
             const data = await this.getByConversation(conversationId);
@@ -120,11 +101,7 @@ class CollectedDataRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Delete all collected data for a conversation
-     * param {string} conversationId - Conversation ID
-     * returns {Promise<void>}
-     */
+    //Delete all collected data for a conversation
     async deleteByConversation(conversationId) {
         try {
             const query = `DELETE FROM ${this.tableName} WHERE conversation_id = ?`;

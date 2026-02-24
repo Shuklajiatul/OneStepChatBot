@@ -261,8 +261,6 @@ class WhatsAppService {
 
     /**
      * Parse status update
-     * webhookData - Webhook payload
-     * Parsed status data
      */
     static parseStatusUpdate(webhookData) {
         try {

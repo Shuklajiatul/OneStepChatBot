@@ -5,6 +5,7 @@ const MessageRepository = require('../repositories/MessageRepository');
 const logger = require('../config/logger');
 const { HTTP_STATUS } = require('../config/constants');
 
+
 /**
  * Webhook Controller
  * Handles incoming webhooks from WhatsApp and Instagram
@@ -21,7 +22,6 @@ class WebhookController {
      */
     async verifyWhatsApp(req, res) {
         try {
-            
             global.slashLogs('WhatsApp webhook verification', true, true);
             const mode = req.query['hub.mode'];
             const token = req.query['hub.verify_token'];
@@ -37,10 +37,8 @@ class WebhookController {
                 res.status(403).send('Forbidden');
             }
         } catch (error) {
-
             global.slashLogs(`Error verifying WhatsApp webhook: ${error.message}`, true, true);
             res.status(500).send('Error');
-            
         }
     }
 
@@ -51,16 +49,15 @@ class WebhookController {
         try {
             const webhookData = req.body;
 
-            // Respond quickly to WhatsApp
+            // Response to WhatsApp
             res.status(200).send('OK');
 
             // Process webhook asynchronously
             this.processWhatsAppWebhook(webhookData).catch((error) => {
-
                 global.slashLogs(`Error processing WhatsApp webhook: ${error.message}`, true, true);
             });
         } catch (error) {
-            global.slashLogs('Error handling WhatsApp webhook', true, true);
+            global.slashLogs(`Error handling WhatsApp webhook: ${error.message}`, true, true);
             res.status(500).send('Error');
         }
     }
@@ -134,17 +131,23 @@ class WebhookController {
     async findFlowByWhatsApp(phoneNumberId) {
         try {
             // This is a simplified version - in production, you'd need to map phone_number_id to whatsapp_number
+    //         const query = `
+    //     SELECT * FROM flows 
+    //     WHERE whatsapp_phone_number_id = ? 
+    //     AND status = 'active' 
+    //     AND is_published = true 
+    //     ALLOW FILTERING
+    //   `;
+
             const query = `
         SELECT * FROM flows 
-        WHERE whatsapp_phone_number_id = ? 
-        AND status = 'active' 
-        AND is_published = true 
+        WHERE whatsapp_number = ?
         ALLOW FILTERING
       `;
 
             // For now, just get any active WhatsApp flow (you should improve this logic)
-            const flows = await this.flowRepository.getFlowsByStatus('active');
-            const whatsappFlows = flows.filter(f => f.channel === 'whatsapp' && f.is_published);
+            const flows = await this.flowRepository.getFlowsByStatus(query, [phoneNumberId]);
+            const whatsappFlows = flows.filter(f => f.channel === 'whatsapp');
 
             return whatsappFlows[0] || null;
         } catch (error) {
@@ -157,18 +160,23 @@ class WebhookController {
      * Verify Instagram webhook (GET request)
      */
     async verifyInstagram(req, res) {
-        const mode = req.query['hub.mode'];
-        const token = req.query['hub.verify_token'];
-        const challenge = req.query['hub.challenge'];
+        try {
+            const mode = req.query['hub.mode'];
+            const token = req.query['hub.verify_token'];
+            const challenge = req.query['hub.challenge'];
 
-        const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN; // Same token for Instagram
+            const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN; // Same token for Instagram
 
-        if (mode === 'subscribe' && token === verifyToken) {
-            global.slashLogs('Instagram webhook verified', true, true);
-            res.status(200).send(challenge);
-        } else {
-            global.slashLogs('Instagram webhook verification failed', true, true);
-            res.status(403).send('Forbidden');
+            if (mode === 'subscribe' && token === verifyToken) {
+                global.slashLogs('Instagram webhook verified', true, true);
+                res.status(200).send(challenge);
+            } else {
+                global.slashLogs('Instagram webhook verification failed', true, true);
+                res.status(403).send('Forbidden');
+            }
+        } catch (error) {
+            global.slashLogs(`Error verifying Instagram webhook: ${error.message}`, true, true);
+            res.status(500).send('Error');
         }
     }
 

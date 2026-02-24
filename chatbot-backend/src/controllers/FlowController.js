@@ -13,186 +13,215 @@ class FlowController {
      * Create a new flow
      */
     async createFlow(req, res) {
-        const { flow_name, flow_description, flow_data, channel, whatsapp_number, instagram_username, webhook_url } = req.body;
+        try {
+            const { flow_name, flow_description, flow_data, channel, whatsapp_number, instagram_username, webhook_url } = req.body;
 
-        // Validate flow structure
-        const validation = validateFlowStructure(flow_data);
-        if (!validation.isValid) {
-            throw new ValidationError('Invalid flow structure', validation.errors);
+            // Validate flow structure
+            const validation = validateFlowStructure(flow_data);
+            if (!validation.isValid) {
+                throw new ValidationError('Invalid flow structure', validation.errors);
+            }
+
+            // Create flow
+            const flow = await this.flowRepository.createFlow({
+                user_id: req.user.id,
+                flow_name,
+                flow_description,
+                flow_data,
+                channel,
+                whatsapp_number,
+                instagram_username,
+                webhook_url,
+            }); 
+
+            // Increment user's flow count
+            await this.userRepository.incrementFlowCount(req.user.id);
+
+            global.slashLogs("Flow created successfully", true, true);
+
+            res.status(201).json({ flow });
+        } catch (error) {
+            global.slashLogs(`Error in createFlow: ${error.message}`, true, true);
+            throw error;
         }
-
-        // Create flow
-        const flow = await this.flowRepository.createFlow({
-            user_id: req.user.id,
-            flow_name,
-            flow_description,
-            flow_data,
-            channel,
-            whatsapp_number,
-            instagram_username,
-            webhook_url,
-        }); 
-
-        // Increment user's flow count
-        await this.userRepository.incrementFlowCount(req.user.id);
-
-        global.slashLogs("Flow created successfully", true, true);
-
-        res.status(201).json({ flow });
     }
 
     /**
      * Get all flows for current user
      */
     async getFlows(req, res) {
-
-        global.slashLogs("Fetching flows for user", true, true);
-        const flows = await this.flowRepository.getFlowsByUser(req.user.id);
-        res.json({ flows });
+        try {
+            global.slashLogs("Fetching flows for user", true, true);
+            const flows = await this.flowRepository.getFlowsByUser(req.user.id);
+            res.json({ flows });
+        } catch (error) {
+            global.slashLogs(`Error in getFlows: ${error.message}`, true, true);
+            throw error;
+        }
     }
 
     /**
      * Get flow by ID
      */
     async getFlow(req, res) {
+        try {
+            global.slashLogs("Fetching flow by ID", true, true);
+            const { id } = req.params;
 
-        global.slashLogs("Fetching flow by ID", true, true);
-        const { id } = req.params;
+            const flow = await this.flowRepository.findById(id);
+            if (!flow) {
+                throw new NotFoundError('Flow', id);
+            }
 
-        const flow = await this.flowRepository.findById(id);
-        if (!flow) {
-            throw new NotFoundError('Flow', id);
+            // Check ownership
+            // if (flow.user_id !== req.user.id) {
+            //     throw new AuthorizationError('You do not have access to this flow');
+            // }
+
+            res.json({ flow });
+        } catch (error) {
+            global.slashLogs(`Error in getFlow: ${error.message}`, true, true);
+            throw error;
         }
-
-        // Check ownership
-        // if (flow.user_id !== req.user.id) {
-        //     throw new AuthorizationError('You do not have access to this flow');
-        // }
-
-        res.json({ flow });
     }
 
     /**
      * Update flow
      */
     async updateFlow(req, res) {
-
-        const { id } = req.params;
-        const updates = req.body;
-        
-        global.slashLogs("Updating flow", true, true);
-        // Get existing flow
-        const flow = await this.flowRepository.findById(id);
-        if (!flow) {
-            throw new NotFoundError('Flow', id);
-        }
-
-        // Check ownership
-        if (flow.user_id !== req.user.id) {
-            throw new AuthorizationError('You do not have access to this flow');
-        }
-
-        // Validate flow structure if updating flow_data
-        if (updates.flow_data) {
-            const validation = validateFlowStructure(updates.flow_data);
-            if (!validation.isValid) {
-                throw new ValidationError('Invalid flow structure', validation.errors);
+        try {
+            const { id } = req.params;
+            const updates = req.body;
+            
+            global.slashLogs("Updating flow", true, true);
+            // Get existing flow
+            const flow = await this.flowRepository.findById(id);
+            if (!flow) {
+                throw new NotFoundError('Flow', id);
             }
+
+            // Check ownership
+            // if (flow.user_id !== req.user.id) {
+            //     throw new AuthorizationError('You do not have access to this flow');
+            // }
+
+            // Validate flow structure if updating flow_data
+            if (updates.flow_data) {
+                const validation = validateFlowStructure(updates.flow_data);
+                if (!validation.isValid) {
+                    throw new ValidationError('Invalid flow structure', validation.errors);
+                }
+            }
+
+            // Update flow
+            const updatedFlow = await this.flowRepository.update(id, updates);
+
+            global.slashLogs("Flow updated", true, true);
+
+            res.json({ flow: updatedFlow });
+        } catch (error) {
+            global.slashLogs(`Error in updateFlow: ${error.message}`, true, true);
+            throw error;
         }
-
-        // Update flow
-        const updatedFlow = await this.flowRepository.update(id, updates);
-
-        global.slashLogs("Flow updated", true, true);
-
-        res.json({ flow: updatedFlow });
     }
 
     /**
      * Delete flow
      */
     async deleteFlow(req, res) {
+        try {
+            global.slashLogs("Deleting flow", true, true);
+            
+            const { id } = req.params;
 
-        global.slashLogs("Deleting flow", true, true);
-        
-        const { id } = req.params;
+            // Get existing flow
+            const flow = await this.flowRepository.findById(id);
+            if (!flow) {
+                throw new NotFoundError('Flow', id);
+            }
 
-        // Get existing flow
-        const flow = await this.flowRepository.findById(id);
-        if (!flow) {
-            throw new NotFoundError('Flow', id);
+            // Check ownership
+            // if (flow.user_id !== req.user.id) {
+            //     throw new AuthorizationError('You do not have access to this flow');
+            // }
+
+            // Delete flow
+            await this.flowRepository.delete(id);
+
+            // Decrement user's flow count
+            await this.userRepository.decrementFlowCount(req.user.id);
+
+            global.slashLogs("Flow deleted successfully", true, true);
+
+            res.status(200).json({"message": "Flow deleted successfully"});
+        } catch (error) {
+            global.slashLogs(`Error in deleteFlow: ${error.message}`, true, true);
+            throw error;
         }
-
-        // Check ownership
-        if (flow.user_id !== req.user.id) {
-            throw new AuthorizationError('You do not have access to this flow');
-        }
-
-        // Delete flow
-        await this.flowRepository.delete(id);
-
-        // Decrement user's flow count
-        await this.userRepository.decrementFlowCount(req.user.id);
-
-        global.slashLogs("Flow deleted successfully", true, true);
-
-        res.status(204).send();
     }
 
     /**
      * Publish flow
      */
     async publishFlow(req, res) {
+        try {
+            global.slashLogs("Publishing flow", true, true);
 
-        global.slashLogs("Publishing flow", true, true);
+            const { id } = req.params;
 
-        const { id } = req.params;
+            // Get existing flow
+            const flow = await this.flowRepository.findById(id);
+            if (!flow) {
+                throw new NotFoundError('Flow', id);
+            }
 
-        // Get existing flow
-        const flow = await this.flowRepository.findById(id);
-        if (!flow) {
-            throw new NotFoundError('Flow', id);
+            // Check ownership
+            if (flow.user_id !== req.user.id) {
+                throw new AuthorizationError('You do not have access to this flow');
+            }
+
+            // Publish flow
+            const publishedFlow = await this.flowRepository.publishFlow(id);
+
+            global.slashLogs("Flow published successfully", true, true);
+
+            res.json({ flow: publishedFlow });
+        } catch (error) {
+            global.slashLogs(`Error in publishFlow: ${error.message}`, true, true);
+            throw error;
         }
-
-        // Check ownership
-        if (flow.user_id !== req.user.id) {
-            throw new AuthorizationError('You do not have access to this flow');
-        }
-
-        // Publish flow
-        const publishedFlow = await this.flowRepository.publishFlow(id);
-
-        global.slashLogs("Flow published successfully", true, true);
-
-        res.json({ flow: publishedFlow });
     }
 
     /**
      * Unpublish flow
      */
     async unpublishFlow(req, res) {
+        try {
+            global.slashLogs("Unpublishing flow", true, true);
 
-        global.slashLogs("Unpublishing flow", true, true);
+            const { id } = req.params;
 
-        const { id } = req.params;
+            // Get existing flow
+            const flow = await this.flowRepository.findById(id);
+            if (!flow) {
+                throw new NotFoundError('Flow', id);
+            }
 
-        // Get existing flow
-        const flow = await this.flowRepository.findById(id);
-        if (!flow) {
-            throw new NotFoundError('Flow', id);
+            // Check ownership
+            if (flow.user_id !== req.user.id) {
+                throw new AuthorizationError('You do not have access to this flow');
+            }
+
+            // Unpublish flow
+            const unpublishedFlow = await this.flowRepository.unpublishFlow(id);
+
+            global.slashLogs("Flow unpublished", true, true);
+
+            res.json({ flow: unpublishedFlow });
+        } catch (error) {
+            global.slashLogs(`Error in unpublishFlow: ${error.message}`, true, true);
+            throw error;
         }
-
-        // Check ownership
-        if (flow.user_id !== req.user.id) {
-            throw new AuthorizationError('You do not have access to this flow');
-        }
-
-        // Unpublish flow
-        const unpublishedFlow = await this.flowRepository.unpublishFlow(id);
-
-        global.slashLogs("Flow unpublished", true, true);
-
-        res.json({ flow: unpublishedFlow });
     }
 }
 
