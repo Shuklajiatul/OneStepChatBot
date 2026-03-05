@@ -45,7 +45,7 @@ class ConversationRepository extends BaseRepository {
             // Return the most recent conversation
             const conversation = this.mapRow(result.rows[0]);
 
-            // ── Session timeout check ──────────────────────────────────────────────
+            // Session timeout check
             // If the user has been inactive longer than SESSION_TIMEOUT, mark the
             // conversation as ABANDONED so a fresh one starts on next message.
             const lastActivity = conversation.last_message_at

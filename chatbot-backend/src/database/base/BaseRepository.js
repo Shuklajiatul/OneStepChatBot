@@ -43,7 +43,7 @@ class BaseRepository {
 
             await this.db.execute(query, values);
 
-            global.slashLogs(`Record created in ${this.tableName}: ${JSON.stringify(record)}`, true, true);
+            global.slashLogs(`Record created in ${this.tableName}`, true, true);
 
             return record;
 
@@ -66,7 +66,7 @@ class BaseRepository {
                 return null;
             }
 
-            global.slashLogs(`Record found in ${this.tableName}: ${JSON.stringify(result.rows[0])}`, true, true);
+            global.slashLogs(`Record found in ${this.tableName}`, true, true);
             return this.mapRow(result.rows[0]);
         } catch (error) {
             global.slashLogs(`Error finding record by ID in ${this.tableName}: ${error.message}`, true, true);
@@ -88,7 +88,7 @@ class BaseRepository {
                 return null;
             }
             
-            global.slashLogs(`Record found in ${this.tableName}: ${JSON.stringify(result.rows[0])}`, true, true);
+            global.slashLogs(`Record found in ${this.tableName}`, true, true);
             return this.mapRow(result.rows[0]);
         } catch (error) {
             global.slashLogs(`Error finding one record in ${this.tableName}: ${error.message}`, true, true);
@@ -154,7 +154,7 @@ class BaseRepository {
 
             await this.db.execute(query, values);
 
-            global.slashLogs(`Record updated in ${this.tableName}: ${JSON.stringify(updateData)}`, true, true);
+            global.slashLogs(`Record updated in ${this.tableName}`, true, true);
 
             // Return updated record
             return this.findById(id);

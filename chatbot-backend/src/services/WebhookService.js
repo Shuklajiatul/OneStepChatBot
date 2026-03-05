@@ -8,30 +8,33 @@ const { ExternalAPIError } = require('../utils/errors');
  * Handles external webhook calls with retry logic
  */
 class WebhookService {
-    /**
-     * Call a webhook
-     * @param {Object} webhookConfig - Webhook configuration
-     * @param {Object} conversation - Conversation object
-     * @param {Object} additionalData - Additional data to send
-     * @returns {Promise<Object>} Webhook response
-     */
+    // Call a webhook
     static async callWebhook(webhookConfig, conversation, additionalData = {}) {
-        const { url, method = 'POST', headers = {}, body = {} } = webhookConfig;
+        const { url, method = 'POST', headers = {}, body = {}, params = {}, path_variables = {} } = webhookConfig;
+
+        // Substitute :key segments in the URL with resolved path_variables
+        // e.g. "https://api.example.com/flows/:id" + { id: "abc" } → "https://api.example.com/flows/abc"
+        const resolvedUrl = Object.keys(path_variables).length > 0
+            ? Object.entries(path_variables).reduce(
+                (acc, [key, value]) => acc.replace(`:${key}`, encodeURIComponent(value)),
+                url
+              )
+            : url;
 
         try {
-            global.slashLogs(`Calling webhook ${url}`, true, true);
+            global.slashLogs(`Calling webhook ${resolvedUrl}: ${JSON.stringify({ webhookConfig, conversation, additionalData })}`, true, true);
 
             const response = await retryWithBackoff(
                 async () => {
                     return await axios({
                         method,
-                        url,
+                        url: resolvedUrl,
                         headers: {
                             'Content-Type': 'application/json',
                             ...headers,
                         },
                         data: method !== 'GET' ? { ...body, ...additionalData } : undefined,
-                        params: method === 'GET' ? { ...body, ...additionalData } : undefined,
+                        params: Object.keys(params).length > 0 ? params : undefined,
                         timeout: parseInt(process.env.WEBHOOK_TIMEOUT || '30000', 10),
                         validateStatus: (status) => status >= 200 && status < 300,
                     });
@@ -39,7 +42,7 @@ class WebhookService {
                 parseInt(process.env.WEBHOOK_MAX_RETRIES || '3', 10)
             );
 
-            global.slashLogs(`Webhook call successful ${url}`, true, true);
+            global.slashLogs(`Webhook call successful ${resolvedUrl}`, true, true);
 
             return {
                 success: true,
@@ -54,13 +57,7 @@ class WebhookService {
         }
     }
 
-    /**
-     * Call webhook with conversation context
-     * @param {Object} webhookConfig - Webhook configuration
-     * @param {Object} conversation - Conversation object
-     * @param {Object} collectedData - Collected data from conversation
-     * @returns {Promise<Object>} Webhook response
-     */
+    // Call webhook with conversation context
     static async callWithContext(webhookConfig, conversation, collectedData = {}) {
         const contextData = {
             conversation_id: conversation.conversation_id,
@@ -75,11 +72,7 @@ class WebhookService {
         return this.callWebhook(webhookConfig, conversation, contextData);
     }
 
-    /**
-     * Validate webhook configuration
-     * @param {Object} webhookConfig - Webhook configuration
-     * @returns {Object} {isValid, errors}
-     */
+    // Validate webhook configuration
     static validateConfig(webhookConfig) {
         const errors = [];
 
@@ -106,12 +99,7 @@ class WebhookService {
         };
     }
 
-    /**
-     * Test webhook connection
-     * @param {string} url - Webhook URL
-     * @param {string} method - HTTP method
-     * @returns {Promise<boolean>} True if webhook is reachable
-     */
+    // Test webhook connection
     static async testConnection(url, method = 'POST') {
         try {
             const response = await axios({

@@ -12,10 +12,7 @@ class FlowRepository extends BaseRepository {
         super('flows');
     }
 
-    /**
-     * Get primary key column name
-     * returns {string}
-     */
+    //Get primary key column name
     getPrimaryKey() {
         return 'flow_id';
     }
@@ -32,9 +29,8 @@ class FlowRepository extends BaseRepository {
         return this.findMany({ user_id: userId }, limit);
     }
 
-    /**
-     * Get flow by WhatsApp number
-     */
+    // Get flow by WhatsApp number
+     
     async getFlowByWhatsAppNumber(whatsappNumber) {
         try {
             const query = `
@@ -57,11 +53,30 @@ class FlowRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Get flow by Instagram username
-     * param {string} instagramUsername - Instagram username
-     * returns {Promise<Object|null>} Flow or null
-     */
+    // Check if a WhatsApp number is already mapped to another published flow
+    async isWhatsAppNumberTaken(whatsappNumber, excludeFlowId) {
+        try {
+            const query = `
+        SELECT flow_id FROM ${this.tableName} 
+        WHERE whatsapp_number = ? 
+        AND is_published = true 
+        ALLOW FILTERING
+      `;
+            const result = await this.db.execute(query, [whatsappNumber]);
+
+            // Filter out the current flow being published
+            const otherFlows = result.rows.filter(
+                (row) => row.flow_id.toString() !== excludeFlowId.toString()
+            );
+
+            return otherFlows.length > 0;
+        } catch (error) {
+            global.slashLogs(`Error checking WhatsApp number ${error.message}`, true, true);
+            throw error;
+        }
+    }
+
+    // Get flow by Instagram username
     async getFlowByInstagramUsername(instagramUsername) {
         try {
             const query = `
@@ -84,36 +99,26 @@ class FlowRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Publish a flow
-     * param {string} flowId - Flow ID
-     * returns {Promise<Object>} Updated flow
-     */
-    async publishFlow(flowId) {
+    // Publish a flow
+    async publishFlow(flowId, whatsapp_number) {
         return this.update(flowId, {
             is_published: true,
             status: FLOW_STATUS.ACTIVE,
+            whatsapp_number: whatsapp_number,
             published_at: new Date(),
         });
     }
 
-    /**
-     * Unpublish a flow
-     * param {string} flowId - Flow ID
-     * returns {Promise<Object>} Updated flow
-     */
+    // Unpublish a flow
     async unpublishFlow(flowId) {
         return this.update(flowId, {
             is_published: false,
             status: FLOW_STATUS.PAUSED,
+            whatsapp_number: null,
         });
     }
 
-    /**
-     * Increment conversation count
-     * param {string} flowId - Flow ID
-     * returns {Promise<void>}
-     */
+    // Increment conversation count
     async incrementConversationCount(flowId) {
         try {
             const flow = await this.findById(flowId);
@@ -127,11 +132,7 @@ class FlowRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Increment message count
-     * param {string} flowId - Flow ID
-     * returns {Promise<void>}
-     */
+    //Increment message count
     async incrementMessageCount(flowId) {
         try {
             const flow = await this.findById(flowId);
@@ -145,12 +146,7 @@ class FlowRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Get flows by status
-     * param {string} status - Flow status
-     * param {number} limit - Maximum number of flows
-     * returns {Promise<Object[]>} Array of flows
-     */
+    // Get flows by status
     async getFlowsByStatus(query, params = []) {
         try {
             const result = await this.db.execute(query, params);

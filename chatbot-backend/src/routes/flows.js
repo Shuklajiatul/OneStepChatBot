@@ -2,7 +2,7 @@ const express          = require('express');
 const { authenticate } = require('../middleware/auth');
 const { validate }     = require('../middleware/validation');
 const FlowController   = require('../controllers/FlowController');
-const { createFlowSchema, updateFlowSchema, getFlowSchema, deleteFlowSchema, publishFlowSchema } = require('../validators/flowValidators');
+const { createFlowSchema, updateFlowSchema, getFlowSchema, deleteFlowSchema, publishFlowSchema, unpublishFlowSchema } = require('../validators/flowValidators');
 
 const router = express.Router();
 const flowController = new FlowController();
@@ -71,7 +71,7 @@ router.post('/:id/publish', authenticate, validate(publishFlowSchema), async (re
 );
 
 // Unpublish flow
-router.post('/:id/unpublish', authenticate, validate(publishFlowSchema), async (req, res, next) => {
+router.post('/:id/unpublish', authenticate, validate(unpublishFlowSchema), async (req, res, next) => {
     try {
         await flowController.unpublishFlow(req, res);
     } catch (error) {

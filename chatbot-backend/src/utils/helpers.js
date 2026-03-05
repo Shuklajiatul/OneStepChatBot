@@ -1,12 +1,6 @@
-/**
- * Common helper functions
- */
+// Common helper functions
 
-/**
- * Check if value is empty (null, undefined, empty string, empty array, empty object)
- * @param {*} value - Value to check
- * @returns {boolean}
- */
+// Check if value is empty (null, undefined, empty string, empty array, empty object)
 const isEmpty = (value) => {
     if (value === null || value === undefined) return true;
     if (typeof value === 'string') return value.trim() === '';
@@ -15,31 +9,17 @@ const isEmpty = (value) => {
     return false;
 };
 
-/**
- * Deep clone an object
- * param {Object} obj - Object to clone
- * returns {Object}
- */
+// Deep clone an object
 const deepClone = (obj) => {
     return JSON.parse(JSON.stringify(obj));
 };
 
-/**
- * Sleep for specified milliseconds
- * @param {number} ms - Milliseconds to sleep
- * @returns {Promise<void>}
- */
+// Sleep for specified milliseconds
 const sleep = (ms) => {
     return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
-/**
- * Retry a function with exponential backoff
- * @param {Function} fn - Async function to retry
- * @param {number} maxRetries - Maximum number of retries
- * @param {number} delay - Initial delay in ms
- * @returns {Promise<*>}
- */
+// Retry a function with exponential backoff
 const retryWithBackoff = async (fn, maxRetries = 3, delay = 1000) => {
     let lastError;
 
@@ -58,12 +38,7 @@ const retryWithBackoff = async (fn, maxRetries = 3, delay = 1000) => {
     throw lastError;
 };
 
-/**
- * Chunk an array into smaller arrays
- * @param {Array} array - Array to chunk
- * @param {number} size - Chunk size
- * @returns {Array[]}
- */
+// Chunk an array into smaller arrays
 const chunkArray = (array, size) => {
     const chunks = [];
     for (let i = 0; i < array.length; i += size) {
@@ -72,21 +47,12 @@ const chunkArray = (array, size) => {
     return chunks;
 };
 
-/**
- * Remove duplicates from array
- * @param {Array} array - Array with duplicates
- * @returns {Array}
- */
+// Remove duplicates from array
 const removeDuplicates = (array) => {
     return [...new Set(array)];
 };
 
-/**
- * Pick specific properties from object
- * @param {Object} obj - Source object
- * @param {string[]} keys - Keys to pick
- * @returns {Object}
- */
+// Pick specific properties from object
 const pick = (obj, keys) => {
     return keys.reduce((result, key) => {
         if (obj.hasOwnProperty(key)) {
@@ -96,23 +62,14 @@ const pick = (obj, keys) => {
     }, {});
 };
 
-/**
- * Omit specific properties from object
- * @param {Object} obj - Source object
- * @param {string[]} keys - Keys to omit
- * @returns {Object}
- */
+// Omit specific properties from object
 const omit = (obj, keys) => {
     const result = { ...obj };
     keys.forEach((key) => delete result[key]);
     return result;
 };
 
-/**
- * Sanitize string for safe output
- * @param {string} str - String to sanitize
- * @returns {string}
- */
+// Sanitize string for safe output
 const sanitizeString = (str) => {
     if (typeof str !== 'string') return str;
     return str
@@ -124,11 +81,7 @@ const sanitizeString = (str) => {
         .replace(/\//g, '&#x2F;');
 };
 
-/**
- * Generate random string
- * @param {number} length - String length
- * @returns {string}
- */
+// Generate random string
 const randomString = (length = 10) => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
@@ -138,24 +91,13 @@ const randomString = (length = 10) => {
     return result;
 };
 
-/**
- * Truncate string to specified length
- * @param {string} str - String to truncate
- * @param {number} maxLength - Maximum length
- * @param {string} suffix - Suffix to add (default '...')
- * @returns {string}
- */
+// Truncate string to specified length
 const truncate = (str, maxLength, suffix = '...') => {
     if (str.length <= maxLength) return str;
     return str.substring(0, maxLength - suffix.length) + suffix;
 };
 
-/**
- * Parse JSON safely
- * @param {string} jsonString - JSON string
- * @param {*} defaultValue - Default value if parsing fails
- * @returns {*}
- */
+// Parse JSON safely
 const safeJSONParse = (jsonString, defaultValue = null) => {
     try {
         return JSON.parse(jsonString);
@@ -164,12 +106,7 @@ const safeJSONParse = (jsonString, defaultValue = null) => {
     }
 };
 
-/**
- * Stringify JSON safely
- * @param {*} value - Value to stringify
- * @param {string} defaultValue - Default value if stringify fails
- * @returns {string}
- */
+// Stringify JSON safely
 const safeJSONStringify = (value, defaultValue = '{}') => {
     try {
         return JSON.stringify(value);
@@ -178,21 +115,13 @@ const safeJSONStringify = (value, defaultValue = '{}') => {
     }
 };
 
-/**
- * Validate email format
- * @param {string} email - Email to validate
- * @returns {boolean}
- */
+// Validate email format
 const isValidEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
 };
 
-/**
- * Validate phone number (basic)
- * @param {string} phone - Phone number to validate
- * @returns {boolean}
- */
+// Validate phone number (basic)
 const isValidPhone = (phone) => {
     const phoneRegex = /^\+?[1-9]\d{1,14}$/;
     return phoneRegex.test(phone);

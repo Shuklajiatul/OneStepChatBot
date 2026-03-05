@@ -19,6 +19,7 @@ class FlowController {
             // Validate flow structure
             const validation = validateFlowStructure(flow_data);
             if (!validation.isValid) {
+                global.slashLogs("Invalid flow structure", true, true);
                 throw new ValidationError('Invalid flow structure', validation.errors);
             }
 
@@ -113,6 +114,11 @@ class FlowController {
                 }
             }
 
+            // Stringify flow_data to JSON string for Cassandra TEXT column
+            if (updates.flow_data && typeof updates.flow_data !== 'string') {
+                updates.flow_data = JSON.stringify(updates.flow_data);
+            }
+
             // Update flow
             const updatedFlow = await this.flowRepository.update(id, updates);
 
@@ -168,6 +174,7 @@ class FlowController {
             global.slashLogs("Publishing flow", true, true);
 
             const { id } = req.params;
+            const { whatsapp_number } = req.body;
 
             // Get existing flow
             const flow = await this.flowRepository.findById(id);
@@ -176,12 +183,18 @@ class FlowController {
             }
 
             // Check ownership
-            if (flow.user_id !== req.user.id) {
-                throw new AuthorizationError('You do not have access to this flow');
+            // if (flow.user_id !== req.user.id) {
+            //     throw new AuthorizationError('You do not have access to this flow');
+            // }
+
+            // Check if whatsapp_number is already mapped to another active flow
+            const isTaken = await this.flowRepository.isWhatsAppNumberTaken(whatsapp_number, id);
+            if (isTaken) {
+                throw new ValidationError(`WhatsApp number ${whatsapp_number} is already mapped to another active flow`);
             }
 
             // Publish flow
-            const publishedFlow = await this.flowRepository.publishFlow(id);
+            const publishedFlow = await this.flowRepository.publishFlow(id, whatsapp_number);
 
             global.slashLogs("Flow published successfully", true, true);
 
@@ -207,12 +220,12 @@ class FlowController {
                 throw new NotFoundError('Flow', id);
             }
 
-            // Check ownership
-            if (flow.user_id !== req.user.id) {
-                throw new AuthorizationError('You do not have access to this flow');
-            }
+            // // Check ownership
+            // if (flow.user_id !== req.user.id) {
+            //     throw new AuthorizationError('You do not have access to this flow');
+            // }
 
-            // Unpublish flow
+            // Unpublish flow and clear whatsapp_number
             const unpublishedFlow = await this.flowRepository.unpublishFlow(id);
 
             global.slashLogs("Flow unpublished", true, true);

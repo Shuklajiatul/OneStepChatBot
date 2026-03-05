@@ -335,6 +335,8 @@ class NodeProcessor {
                     method: node.data.method || 'POST',
                     headers: node.data.headers || {},
                     body: node.data.body || {},
+                    params: node.data.params || {},
+                    path_variables: node.data.path_variables || {},
                 },
                 conversation
             );
@@ -377,6 +379,7 @@ class NodeProcessor {
      */
     async processDelayNode(node, conversation, flow) {
         const delayMs = node.data.delay_seconds * 1000;
+        global.slashLogs(`Delaying for ${node.data.delay_seconds} seconds for conversationId: ${conversation.conversation_id}`, true, true);
         await sleep(delayMs);
 
         return {

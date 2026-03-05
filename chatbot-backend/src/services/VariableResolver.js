@@ -7,20 +7,18 @@ const { safeJSONParse } = require('../utils/helpers');
  * Resolves variable placeholders in messages
  */
 class VariableResolver {
-    /**
-     * Replace variables in text
-     * param {string} text - Text with variable placeholders
-     * param {Object} conversation - Conversation object
-     * param {Object} additionalData - Additional data to use for resolution
-     * returns {string} Text with variables replaced
-     */
+    // Replace variables in text
     static resolve(text, conversation, additionalData = {}) {
         if (!text || typeof text !== 'string') {
             return text;
         }
 
         const sessionData = parseSessionData(conversation);
-        const allData = { ...sessionData, ...additionalData };
+        global.slashLogs(`Session Data: ${JSON.stringify(sessionData)}`, true, true);
+        // Expose session data under the 'session' key so that {{session.xxx}} paths resolve correctly.
+        // Both {{user_name}} and {{session.user_name}} will work.
+        // old logic ::  const allData = { ...sessionData, ...additionalData };
+        const allData = { ...sessionData, ...additionalData, session: { ...sessionData, ...additionalData } };
 
         // Find all {{variable}} patterns
         const variablePattern = /\{\{([^}]+)\}\}/g;
@@ -30,7 +28,7 @@ class VariableResolver {
             const value = this.getNestedValue(allData, trimmedPath);
 
             if (value === null || value === undefined) {
-                global.slashLogs(`Variable not found ${error.message}`, true, true);
+                global.slashLogs(`Variable not found: ${trimmedPath}`, true, true);
                 return match; // Keep original placeholder if not found
             }
 
@@ -38,13 +36,7 @@ class VariableResolver {
         });
     }
 
-    /**
-     * Get nested value from object using dot notation
-     * param {Object} obj - Object to search
-     * param {string} path - Dot-notation path (e.g., "webhook.response.id")
-     * returns {*} Value or null
-     * private
-     */
+    // Get nested value from object using dot notation
     static getNestedValue(obj, path) {
         const parts = path.split('.');
         let value = obj;
@@ -60,11 +52,7 @@ class VariableResolver {
         return value;
     }
 
-    /**
-     * Extract all variable names from text
-     * @param {string} text - Text with variable placeholders
-     * @returns {string[]} Array of variable names
-     */
+    // Extract all variable names from text
     static extractVariables(text) {
         if (!text || typeof text !== 'string') {
             return [];
@@ -81,11 +69,7 @@ class VariableResolver {
         return variables;
     }
 
-    /**
-     * Check if text contains variables
-     * @param {string} text - Text to check
-     * @returns {boolean}
-     */
+    // Check if text contains variables
     static hasVariables(text) {
         if (!text || typeof text !== 'string') {
             return false;
@@ -94,13 +78,7 @@ class VariableResolver {
         return /\{\{([^}]+)\}\}/.test(text);
     }
 
-    /**
-     * Resolve variables in an object (recursively)
-     * @param {Object} obj - Object with potential variable placeholders
-     * @param {Object} conversation - Conversation object
-     * @param {Object} additionalData - Additional data
-     * @returns {Object} Object with variables resolved
-     */
+    // Resolve variables in an object (recursively)
     static resolveObject(obj, conversation, additionalData = {}) {
         if (!obj || typeof obj !== 'object') {
             return obj;
