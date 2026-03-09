@@ -161,6 +161,30 @@ class WhatsAppService {
     }
 
     /**
+     * Send a video message
+     */
+    async sendVideoMessage(to, videoUrl, caption = '') {
+        try {
+            const response = await this.makeRequest('POST', `/messages`, {
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to,
+                type: 'video',
+                video: {
+                    link: videoUrl,
+                    caption,
+                },
+            });
+
+            global.slashLogs(`Video message sent ${to} for messageId: ${response.messages?.[0]?.id}`, true, true);
+            return response;
+        } catch (error) {
+            global.slashLogs(`Failed to send video message ${to} for error: ${error.message}`, true, true);
+            throw error;
+        }
+    }
+
+    /**
      * Mark message as read
      */
     async markAsRead(messageId) {

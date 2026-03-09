@@ -76,6 +76,12 @@ class NodeProcessor {
                     node.data.filename || 'document',
                     message
                 );
+            } else if (node.data.media_type === 'video') {
+                await this.whatsappService.sendVideoMessage(
+                    conversation.user_phone,
+                    node.data.media_url,
+                    message
+                );
             }
         } else {
             await this.whatsappService.sendTextMessage(conversation.user_phone, message);

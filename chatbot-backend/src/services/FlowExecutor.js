@@ -8,6 +8,7 @@ const NodeProcessor                           = require('./NodeProcessor');
 const WhatsAppService                         = require('./WhatsAppService');
 const { parseFlowData }                       = require('../models/Flow');
 const { CONVERSATION_STATUS, MESSAGE_SENDER } = require('../config/constants');
+const ProfanityService                        = require('./ProfanityService');
 
 /**
  * Flow Executor Service
@@ -34,6 +35,30 @@ class FlowExecutor {
             let conversation = await this.conversationRepository.getActiveConversation(userPhone, flowId);
 
             if (!conversation) {
+                // First message check for profanity before doing anything
+                // Mode is controlled by PROFANITY_CHECK_MODE env var: 'local' (default) or 'ai'
+                const isProfane = await ProfanityService.check(messageText);
+
+                if (isProfane) {
+                    global.slashLogs(`Profanity detected in first message from ${userPhone}: "${messageText}" — conversation blocked`, true, true);
+
+                    // Send a warning back to the user
+                    try {
+                        const warningService = new WhatsAppService(
+                            process.env.WHATSAPP_ACCESS_TOKEN,
+                            process.env.WHATSAPP_PHONE_NUMBER_ID
+                        );
+                        await warningService.sendTextMessage(
+                            userPhone,
+                            '⚠️ Please do not use abusive or inappropriate language. Your message has not been processed.'
+                        );
+                    } catch (warnErr) {
+                        global.slashLogs(`Failed to send profanity warning to ${userPhone}: ${warnErr.message}`, true, true);
+                    }
+
+                    return; // Do not create conversation and do not store message
+                }
+
                 conversation = await this.startConversation(
                     flowId,
                     userPhone,
@@ -143,7 +168,7 @@ class FlowExecutor {
             let currentNodeId = conversation.current_node_id ? conversation.current_node_id.toString() : null;
             let shouldContinue = true;
             let iterationCount = 0;
-            const maxIterations = 50; // Prevent infinite loops
+            const maxIterations = 50; // To prevent infinite loops
 
             while (shouldContinue && iterationCount < maxIterations) {
                 iterationCount++;
