@@ -2,9 +2,6 @@ const logger = require('../config/logger');
 
 /**
  * Preview Service
- * Simulates WhatsApp messaging for preview/testing mode
- * Implements the same interface as WhatsAppService but stores messages
- * in memory instead of sending to external APIs
  */
 class PreviewService {
     constructor() {

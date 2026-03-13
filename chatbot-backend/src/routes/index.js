@@ -3,6 +3,7 @@ const flowRoutes = require('./flows');
 const userRoutes = require('./users');
 const webhookRoutes = require('./webhooks');
 const previewRoutes = require('./preview');
+const liveChatRoutes = require('./liveChat');
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.use('/auth', userRoutes);
 router.use('/users', userRoutes);
 router.use('/webhooks', webhookRoutes);
 router.use('/preview', previewRoutes);
+router.use('/live', liveChatRoutes);
 
 module.exports = router;

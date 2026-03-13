@@ -1,7 +1,9 @@
 require('dotenv').config();
-const app = require('./app');
-const databaseConfig = require('./config/database');
-const logger = require('./config/logger');
+const http              = require('http');
+const { Server }        = require('socket.io');
+const app               = require('./app');
+const databaseConfig    = require('./config/database');
+const socketHandlers    = require('./socketHandlers');
 
 
 const PORT = process.env.PORT || 3006;
@@ -13,8 +15,24 @@ const startServer = async () => {
         await databaseConfig.connect();
         global.slashLogs(`Connected to ScyllaDB successfully`, true, true);
 
-        // Start HTTP server
-        const server = app.listen(PORT, () => {
+        // Create HTTP server and attach Socket.IO
+        const server = http.createServer(app);
+        const io = new Server(server, {
+            cors: {
+                origin: process.env.FRONTEND_URL || '*',
+                methods: ['GET', 'POST'],
+                credentials: true,
+            },
+        });
+
+        // Make io globally accessible (for FlowExecutor, WebhookController)
+        global.io = io;
+
+        // Register all Socket.IO event handlers
+        socketHandlers(io);
+
+        // Start listening
+        server.listen(PORT, () => {
             global.slashLogs(`Server running on port ${PORT}`, true, true);
         });
 

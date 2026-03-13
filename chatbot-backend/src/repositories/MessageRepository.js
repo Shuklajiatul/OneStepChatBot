@@ -158,7 +158,7 @@ class MessageRepository extends BaseRepository {
     }
 
     /**
-     * Get messages by conversation (alias for getMessagesByConversation)
+     * Get messages by conversation
      */
     async getByConversation(conversationId, limit = 100) {
         // First, get the IDs and order from the index table

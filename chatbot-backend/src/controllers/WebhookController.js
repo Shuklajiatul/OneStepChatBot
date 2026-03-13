@@ -95,7 +95,6 @@ class WebhookController {
                 } else if (messageData.type === 'interactive') {
                     userInput = messageData.interactive?.button_reply?.id || messageData.interactive?.list_reply?.id;
                 }
-
                 // Process message through flow executor
                 await this.flowExecutor.processMessage(
                     flow.flow_id,

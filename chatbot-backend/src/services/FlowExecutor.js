@@ -34,8 +34,42 @@ class FlowExecutor {
             // Get or create conversation
             let conversation = await this.conversationRepository.getActiveConversation(userPhone, flowId);
 
+            // ── Human Takeover Bypass ──────────────────────────────────────────
+            // If no active conversation found, check if there's one in human_takeover state
             if (!conversation) {
-                // First message check for profanity before doing anything
+                const takeoverConversation = await this.conversationRepository.findHumanTakeoverByPhone(userPhone, flowId);
+
+                if (takeoverConversation) {
+                    global.slashLogs(`[HUMAN TAKEOVER] Message from ${userPhone} forwarded to agent (conversationId: ${takeoverConversation.conversation_id})`, true, true);
+
+                    // Save user message to DB so history is preserved
+                    await this.messageRepository.createMessage({
+                        conversation_id: takeoverConversation.conversation_id,
+                        flow_id: flowId,
+                        sender: MESSAGE_SENDER.USER,
+                        message_type: 'text',
+                        message_text: messageText,
+                    });
+
+                    // Forward to admin via Socket.IO — do NOT run bot flow
+                    if (global.io) {
+                        global.io
+                            .to(`admin:takeover:${takeoverConversation.conversation_id}`)
+                            .emit('admin:customer_reply', {
+                                conversationId: takeoverConversation.conversation_id,
+                                from: userPhone,
+                                name: userName,
+                                message: messageText,
+                                timestamp: new Date().toISOString(),
+                            });
+                    }
+
+                    return; // Stop here — agent handles response
+                }
+            }
+
+            if (!conversation) {
+                // First message — check for profanity before doing anything
                 // Mode is controlled by PROFANITY_CHECK_MODE env var: 'local' (default) or 'ai'
                 const isProfane = await ProfanityService.check(messageText);
 
@@ -69,13 +103,27 @@ class FlowExecutor {
             }
 
             // Save user message
-            await this.messageRepository.createMessage({
+            const savedUserMessage = await this.messageRepository.createMessage({
                 conversation_id: conversation.conversation_id,
                 flow_id: flowId,
                 sender: MESSAGE_SENDER.USER,
                 message_type: 'text',
                 message_text: messageText,
             });
+
+            // ── Broadcast incoming message to admin live panel 
+            if (global.io && !isPreview) {
+                global.io
+                    .to(`admin:live:${flowId}`)
+                    .emit('admin:incoming_message', {
+                        conversationId: conversation.conversation_id,
+                        from: userPhone,
+                        name: userName || userPhone,
+                        message: messageText,
+                        type: 'text',
+                        timestamp: new Date().toISOString(),
+                    });
+            }
 
             // Track analytics
             await this.analyticsRepository.trackMessageReceived(flowId);
@@ -88,6 +136,7 @@ class FlowExecutor {
             throw error;
         }
     }
+
 
     // Start a new conversation
     async startConversation(flowId, userPhone, userName, platformUserId, channel) {
@@ -194,6 +243,25 @@ class FlowExecutor {
 
 
                 global.slashLogs(`Node processed: ${currentNodeId} for flowId: ${flowId} also result ${result}`, true, true);
+
+                // ── Broadcast bot response to admin live panel
+                if (global.io && !isPreview) {
+                    const lastMessage = await this.messageRepository.getLastMessage(conversation.conversation_id);
+                    if (lastMessage && lastMessage.sender === 'bot') {
+                        global.io
+                            .to(`admin:live:${flowId}`)
+                            .emit('admin:bot_response', {
+                                conversationId: conversation.conversation_id,
+                                userPhone: conversation.user_phone,
+                                message: {
+                                    type: lastMessage.message_type,
+                                    text: lastMessage.message_text,
+                                    data: lastMessage.message_data,
+                                },
+                                timestamp: lastMessage.timestamp,
+                            });
+                    }
+                }
 
                 // Update session data if changed
                 if (result.updatedSessionData) {

@@ -164,6 +164,44 @@ class ConversationRepository extends BaseRepository {
             throw error;
         }
     }
+
+    // Get all active or human_takeover conversations for a flow (for the admin live panel)
+    async getActiveByFlow(flowId, limit = 100) {
+        try {
+            const activeResult = await this.db.execute(
+                `SELECT * FROM ${this.tableName} WHERE flow_id = ? AND status = ? LIMIT ? ALLOW FILTERING`,
+                [flowId, CONVERSATION_STATUS.ACTIVE, limit]
+            );
+            const takeoverResult = await this.db.execute(
+                `SELECT * FROM ${this.tableName} WHERE flow_id = ? AND status = ? LIMIT ? ALLOW FILTERING`,
+                [flowId, CONVERSATION_STATUS.HUMAN_TAKEOVER, limit]
+            );
+            const all = [...activeResult.rows, ...takeoverResult.rows];
+            return all.map((row) => this.mapRow(row));
+        } catch (error) {
+            global.slashLogs(`Error getting active conversations by flow ${error.message}`, true, true);
+            throw error;
+        }
+    }
+
+    // Find a conversation currently in human_takeover for a specific user+flow
+    async findHumanTakeoverByPhone(userPhone, flowId) {
+        try {
+            const query = `
+        SELECT * FROM ${this.tableName}
+        WHERE user_phone = ?
+        AND flow_id = ?
+        AND status = ?
+        ALLOW FILTERING
+      `;
+            const result = await this.db.execute(query, [userPhone, flowId, CONVERSATION_STATUS.HUMAN_TAKEOVER]);
+            if (result.rows.length === 0) return null;
+            return this.mapRow(result.rows[0]);
+        } catch (error) {
+            global.slashLogs(`Error finding human takeover conversation ${error.message}`, true, true);
+            return null;
+        }
+    }
 }
 
 module.exports = ConversationRepository;
