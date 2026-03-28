@@ -1,14 +1,8 @@
 const leoProfanity = require('leo-profanity');
 const axios        = require('axios');
 
-/**
- * ProfanityService
- * Flag-based profanity detection.
- *   PROFANITY_CHECK_MODE=local  → use leo-profanity library (fast, offline, default)
- *   PROFANITY_CHECK_MODE=ai     → use OpenRouter free AI model (context-aware)
- */
+// PROFANITY_CHECK_MODE=local or ai
 class ProfanityService {
-    // Returns true if the message contains profanity / inappropriate content.
 
     static async check(message) {
         const mode = (process.env.PROFANITY_CHECK_MODE || 'local').toLowerCase();
@@ -17,17 +11,13 @@ class ProfanityService {
             return this.checkWithAI(message);
         }
 
-        // Default: local leo-profanity (synchronous)
         return leoProfanity.check(message);
     }
 
-    // Local check using leo-profanity (sync, wrapped in Promise for uniform interface)
     static checkWithLocal(message) {
         return leoProfanity.check(message);
     }
 
-    // AI check via OpenRouter free model
-    // Uses a strict yes/no prompt so the response is always deterministic.
     static async checkWithAI(message) {
         const apiKey = process.env.OPENROUTER_API_KEY;
         const model  = process.env.OPENROUTER_MODEL || 'google/gemma-3-27b-it:free';
@@ -79,7 +69,6 @@ class ProfanityService {
             const status   = error.response?.status;
             const body     = JSON.stringify(error.response?.data || {});
             global.slashLogs(`AI profanity check failed [${status}]: ${error.message} | Response: ${body} — falling back to local`, true, true);
-            // Fallback to local on any API error so conversations are never blocked by network issues
             return leoProfanity.check(message);
         }
     }

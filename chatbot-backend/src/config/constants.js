@@ -12,6 +12,7 @@ const NODE_TYPES = {
     WEBHOOK: 'webhook',
     DELAY: 'delay',
     END: 'end',
+    TALK_TO_AGENT: 'talk_to_agent',
 };
 
 // Message Types
@@ -33,6 +34,7 @@ const CONVERSATION_STATUS = {
     COMPLETED: 'completed',
     ABANDONED: 'abandoned',
     HUMAN_TAKEOVER: 'human_takeover',
+    PENDING_AGENT: 'pending_agent',
 };
 
 // Flow Status
@@ -48,6 +50,7 @@ const MESSAGE_SENDER = {
     BOT: 'bot',
     USER: 'user',
     SYSTEM: 'system',
+    AGENT: 'agent',
 };
 
 // Delivery Status

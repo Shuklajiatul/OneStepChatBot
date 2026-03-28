@@ -6,9 +6,7 @@ const { CONVERSATION_STATUS, MESSAGE_SENDER } = require('./config/constants');
 
 /**
  * Socket.IO Event Handlers
- * Handles all real-time events for:
- *   - Admin live WhatsApp chat monitor
- *   - Human takeover of bot conversations
+ * Handles all real-time events for: Admin live WhatsApp chat monitor and  Human takeover of bot conversations
  */
 module.exports = (io) => {
     const conversationRepo = new ConversationRepository();
@@ -48,9 +46,6 @@ module.exports = (io) => {
          * Admin clicks "Take Over" on a conversation.
          * Sets conversation status to HUMAN_TAKEOVER, joins a private room,
          * and sends back the full chat history.
-         *
-         * Payload:  { conversationId: string }
-         * Response: admin:takeover_confirmed → { conversationId, customerPhone, customerName, chatHistory }
          */
         socket.on('admin:takeover', async ({ conversationId }) => {
             try {
@@ -154,9 +149,6 @@ module.exports = (io) => {
          * admin:handback
          * Admin returns control of the conversation back to the bot.
          * Conversation status is reset to ACTIVE.
-         *
-         * Payload:  { conversationId: string }
-         * Response: admin:handback_confirmed → { conversationId }
          */
         socket.on('admin:handback', async ({ conversationId }) => {
             try {
@@ -189,9 +181,169 @@ module.exports = (io) => {
             }
         });
 
-        // ──────────────────────────────────────────────────────────────────────
+        
+        // TALK-TO-AGENT (Flow-triggered agent requests)
+        /**
+         * admin:accept_agent_request
+         * First admin to emit this wins — the conversation status is atomically
+         * updated from PENDING_AGENT → HUMAN_TAKEOVER. Any subsequent accept for
+         * the same conversationId is rejected with an error.
+         */
+
+        socket.on('admin:accept_agent_request', async ({ conversationId }) => {
+            try {
+                global.slashLogs(`[Socket.IO] Admin ${socket.id} accepting agent request: ${conversationId}`, true, true);
+
+                const conversation = await conversationRepo.findById(conversationId);
+                if (!conversation) {
+                    return socket.emit('admin:error', { message: 'Conversation not found', conversationId });
+                }
+
+                // ── First-accept lock ──
+                // If another admin already accepted (status changed), reject this one
+                if (conversation.status !== CONVERSATION_STATUS.PENDING_AGENT) {
+                    return socket.emit('admin:error', {
+                        message: 'This request has already been accepted or expired.',
+                        conversationId,
+                    });
+                }
+
+                // Cancel the pending timeout timer
+                const timer = global.pendingAgentTimers.get(conversationId);
+                if (timer) {
+                    clearTimeout(timer.timerId);
+                    global.pendingAgentTimers.delete(conversationId);
+                    global.slashLogs(`[Socket.IO] Timeout cancelled for conversation: ${conversationId}`, true, true);
+                }
+
+                // Atomically upgrade status to HUMAN_TAKEOVER
+                await conversationRepo.updateStatus(conversationId, CONVERSATION_STATUS.HUMAN_TAKEOVER);
+
+                // Admin joins private takeover room
+                socket.join(`admin:takeover:${conversationId}`);
+
+                // Load full chat history from DB
+                const chatHistory = await messageRepo.getByConversation(conversationId);
+
+                // Confirm to the accepting admin
+                socket.emit('admin:takeover_confirmed', {
+                    conversationId,
+                    customerPhone: conversation.user_phone,
+                    customerName:  conversation.user_name,
+                    chatHistory,
+                });
+
+                // Notify ALL other admins: request is gone, conversation is now in takeover
+                socket.to(`admin:live:${conversation.flow_id}`).emit('admin:agent_request_accepted', {
+                    conversationId,
+                    acceptedBySocketId: socket.id,
+                });
+                socket.to(`admin:live:${conversation.flow_id}`).emit('admin:conversation_status_changed', {
+                    conversationId,
+                    status: CONVERSATION_STATUS.HUMAN_TAKEOVER,
+                });
+
+                global.slashLogs(`[Socket.IO] Agent request accepted for conversation: ${conversationId}`, true, true);
+
+            } catch (error) {
+                global.slashLogs(`[Socket.IO] Error in admin:accept_agent_request: ${error.message}`, true, true);
+                socket.emit('admin:error', { message: 'Failed to accept agent request', details: error.message });
+            }
+        });
+
+        /**
+         * admin:reject_agent_request
+         * Admin declines the agent request. The timeout message is sent immediately
+         * to the customer, the pending timer is cancelled, and the fallback node
+         * (if defined) is executed by the bot.
+         */
+        socket.on('admin:reject_agent_request', async ({ conversationId }) => {
+            try {
+                global.slashLogs(`[Socket.IO] Admin ${socket.id} rejecting agent request: ${conversationId}`, true, true);
+
+                const conversation = await conversationRepo.findById(conversationId);
+                if (!conversation) {
+                    return socket.emit('admin:error', { message: 'Conversation not found', conversationId });
+                }
+
+                if (conversation.status !== CONVERSATION_STATUS.PENDING_AGENT) {
+                    return socket.emit('admin:error', {
+                        message: 'Conversation is not in pending_agent state.',
+                        conversationId,
+                    });
+                }
+
+                // Cancel the running timeout timer
+                const timer = global.pendingAgentTimers.get(conversationId);
+                if (timer) {
+                    clearTimeout(timer.timerId);
+                    global.pendingAgentTimers.delete(conversationId);
+                }
+
+                // Load fallbackNodeId from session_data (stored by NodeProcessor)
+                const sessionData = conversation.session_data
+                    ? (typeof conversation.session_data === 'string'
+                        ? JSON.parse(conversation.session_data)
+                        : conversation.session_data)
+                    : {};
+                const fallbackNodeId = sessionData.__pendingAgentFallbackNodeId || null;
+
+                const WhatsAppService = require('./services/WhatsAppService');
+                const whatsappService = new WhatsAppService(
+                    process.env.WHATSAPP_ACCESS_TOKEN,
+                    process.env.WHATSAPP_PHONE_NUMBER_ID
+                );
+                const rejectMessage = 'Sorry, all agents are busy right now. Please try again later.';
+
+                await whatsappService.sendTextMessage(conversation.user_phone, rejectMessage);
+                await messageRepo.createMessage({
+                    conversation_id: conversationId,
+                    flow_id:         conversation.flow_id,
+                    sender:          'bot',
+                    message_type:    'text',
+                    message_text:    rejectMessage,
+                });
+
+                if (fallbackNodeId) {
+                    await conversationRepo.updateStatus(conversationId, CONVERSATION_STATUS.ACTIVE);
+                    await conversationRepo.updateCurrentNode(conversationId, fallbackNodeId);
+
+                    // Trigger the bot to continue from the fallback node
+                    const FlowExecutor = require('./services/FlowExecutor');
+                    const freshConvo   = await conversationRepo.findById(conversationId);
+                    const executor     = new FlowExecutor();
+                    await executor.executeFlow(
+                        { ...freshConvo, status: CONVERSATION_STATUS.ACTIVE, current_node_id: fallbackNodeId },
+                        conversation.flow_id,
+                        null
+                    );
+                } else {
+                    await conversationRepo.completeConversation(conversationId);
+                }
+
+                socket.emit('admin:agent_request_rejected', { conversationId });
+                socket.to(`admin:live:${conversation.flow_id}`).emit('admin:agent_request_rejected', { conversationId });
+                socket.to(`admin:live:${conversation.flow_id}`).emit('admin:conversation_status_changed', {
+                    conversationId,
+                    status: fallbackNodeId ? CONVERSATION_STATUS.ACTIVE : CONVERSATION_STATUS.COMPLETED,
+                });
+
+                // If no fallback, the conversation ended — tell the frontend to remove the card
+                if (!fallbackNodeId) {
+                    socket.emit('admin:conversation_completed', { conversationId, status: 'completed' });
+                    socket.to(`admin:live:${conversation.flow_id}`).emit('admin:conversation_completed', { conversationId, status: 'completed' });
+                }
+
+                global.slashLogs(`[Socket.IO] Agent request rejected for conversation: ${conversationId}`, true, true);
+
+            } catch (error) {
+                global.slashLogs(`[Socket.IO] Error in admin:reject_agent_request: ${error.message}`, true, true);
+                socket.emit('admin:error', { message: 'Failed to reject agent request', details: error.message });
+            }
+        });
+
         // DISCONNECT
-        // ──────────────────────────────────────────────────────────────────────
+
         socket.on('disconnect', (reason) => {
             global.slashLogs(`[Socket.IO] Admin disconnected: ${socket.id}. Reason: ${reason}`, true, true);
             // Socket.IO automatically removes the socket from all rooms on disconnect

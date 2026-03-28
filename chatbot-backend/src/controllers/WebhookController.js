@@ -90,10 +90,17 @@ class WebhookController {
 
                 // Extract user input based on message type
                 let userInput = null;
+                let displayText = null; // Human-readable label for admin panel
                 if (messageData.type === 'text') {
                     userInput = messageData.text;
+                    displayText = messageData.text;
                 } else if (messageData.type === 'interactive') {
-                    userInput = messageData.interactive?.button_reply?.id || messageData.interactive?.list_reply?.id;
+                    // id  → used by the flow engine to match button/list options
+                    // title → shown to the admin in the live panel
+                    const buttonReply = messageData.interactive?.button_reply;
+                    const listReply   = messageData.interactive?.list_reply;
+                    userInput   = buttonReply?.id    || listReply?.id    || '';
+                    displayText = buttonReply?.title || listReply?.title || userInput;
                 }
                 // Process message through flow executor
                 await this.flowExecutor.processMessage(
@@ -102,7 +109,10 @@ class WebhookController {
                     messageData.name,
                     userInput || messageData.text || '',
                     messageData.from,
-                    'whatsapp'
+                    'whatsapp',
+                    false,
+                    null,
+                    displayText || userInput || messageData.text || ''
                 );
             }
 

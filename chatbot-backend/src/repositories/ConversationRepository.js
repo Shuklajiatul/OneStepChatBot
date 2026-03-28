@@ -165,19 +165,23 @@ class ConversationRepository extends BaseRepository {
         }
     }
 
-    // Get all active or human_takeover conversations for a flow (for the admin live panel)
+    // Get all active, human_takeover, or pending_agent conversations for a flow (admin live panel)
     async getActiveByFlow(flowId, limit = 100) {
         try {
-            const activeResult = await this.db.execute(
-                `SELECT * FROM ${this.tableName} WHERE flow_id = ? AND status = ? LIMIT ? ALLOW FILTERING`,
-                [flowId, CONVERSATION_STATUS.ACTIVE, limit]
-            );
-            const takeoverResult = await this.db.execute(
-                `SELECT * FROM ${this.tableName} WHERE flow_id = ? AND status = ? LIMIT ? ALLOW FILTERING`,
-                [flowId, CONVERSATION_STATUS.HUMAN_TAKEOVER, limit]
-            );
-            const all = [...activeResult.rows, ...takeoverResult.rows];
-            return all.map((row) => this.mapRow(row));
+            const statuses = [
+                CONVERSATION_STATUS.ACTIVE,
+                CONVERSATION_STATUS.HUMAN_TAKEOVER,
+                CONVERSATION_STATUS.PENDING_AGENT,
+            ];
+            const rows = [];
+            for (const status of statuses) {
+                const result = await this.db.execute(
+                    `SELECT * FROM ${this.tableName} WHERE flow_id = ? AND status = ? LIMIT ? ALLOW FILTERING`,
+                    [flowId, status, limit]
+                );
+                rows.push(...result.rows);
+            }
+            return rows.map((row) => this.mapRow(row));
         } catch (error) {
             global.slashLogs(`Error getting active conversations by flow ${error.message}`, true, true);
             throw error;
@@ -201,6 +205,44 @@ class ConversationRepository extends BaseRepository {
             global.slashLogs(`Error finding human takeover conversation ${error.message}`, true, true);
             return null;
         }
+    }
+
+    // Find a conversation currently waiting for an agent (PENDING_AGENT) for a specific user+flow
+    async findPendingAgentByPhone(userPhone, flowId) {
+        try {
+            const query = `
+        SELECT * FROM ${this.tableName}
+        WHERE user_phone = ?
+        AND flow_id = ?
+        AND status = ?
+        ALLOW FILTERING
+      `;
+            const result = await this.db.execute(query, [userPhone, flowId, CONVERSATION_STATUS.PENDING_AGENT]);
+            if (result.rows.length === 0) return null;
+            return this.mapRow(result.rows[0]);
+        } catch (error) {
+            global.slashLogs(`Error finding pending agent conversation ${error.message}`, true, true);
+            return null;
+        }
+    }
+
+    // Set conversation to PENDING_AGENT and store the fallbackNodeId for timeout use
+    async setPendingAgent(conversationId, fallbackNodeId = null) {
+        return this.update(conversationId, {
+            status:           CONVERSATION_STATUS.PENDING_AGENT,
+            // Reuse current_node_id to store fallbackNodeId temporarily — it is
+            // overwritten by updateCurrentNode() if the agent accepts or fallback fires.
+            // We store it in session_data under a reserved key to keep current_node_id clean.
+            last_message_at:  new Date(),
+        });
+    }
+
+    // Generic updateStatus helper — used by socketHandlers for accept/reject/handback
+    async updateStatus(conversationId, status) {
+        return this.update(conversationId, {
+            status,
+            last_message_at: new Date(),
+        });
     }
 }
 

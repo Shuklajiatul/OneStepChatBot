@@ -1,10 +1,14 @@
 const logger = require('../config/logger');
-const { NODE_TYPES } = require('../config/constants');
+const { NODE_TYPES, CONVERSATION_STATUS, MESSAGE_SENDER } = require('../config/constants');
 const VariableResolver = require('./VariableResolver');
 const ConditionEvaluator = require('./ConditionEvaluator');
 const WebhookService = require('./WebhookService');
 const { sleep } = require('../utils/helpers');
 const { setSessionVariable, updateSessionData } = require('../models/Conversation');
+
+// Global map of pending agent timers: conversationId → { timerId, flowId }
+// Allows socketHandlers to cancel the timeout when an admin accepts
+global.pendingAgentTimers = global.pendingAgentTimers || new Map();
 
 /**
  * Node Processor Service
@@ -48,6 +52,9 @@ class NodeProcessor {
 
             case NODE_TYPES.END:
                 return await this.processEndNode(node, conversation, flow);
+
+            case NODE_TYPES.TALK_TO_AGENT:
+                return await this.processTalkToAgentNode(node, conversation, flow);
 
             default:
                 global.slashLogs(`Unknown node type ${node.type }`, true, true);
@@ -141,20 +148,32 @@ class NodeProcessor {
             }
         }
 
-        // Save collected data
-        await this.collectedDataRepository.saveVariable(
-            conversation.conversation_id,
-            node.data.variable_name,
-            userInput,
-            node.id
-        );
+        // Normalize email to lowercase
+        if (node.data.validation_type === 'email') {
+            global.slashLogs(`Normalizing email to lowercase: ${userInput}`, true, true);
+            userInput = userInput.toLowerCase();
+        }
 
-        // Update session data
-        const updatedSessionData = setSessionVariable(
-            conversation,
-            node.data.variable_name,
-            userInput
-        );
+        // Only save if a variable name is defined
+        const variableName = node.data.variable_name;
+        let updatedSessionData;
+
+        if (variableName) {
+            await this.collectedDataRepository.saveVariable(
+                conversation.conversation_id,
+                variableName,
+                userInput,
+                node.id
+            );
+
+            updatedSessionData = setSessionVariable(
+                conversation,
+                variableName,
+                userInput
+            );
+        } else {
+            global.slashLogs(`Question node ${node.id} has no variable_name set; skipping session save.`, true, true);
+        }
 
         return {
             nextNodeId: node.next,
@@ -197,9 +216,25 @@ class NodeProcessor {
         const selectedButton = node.data.buttons.find((btn) => btn.id === userInput);
 
         if (!selectedButton) {
-            global.slashLogs(`Invalid button selection: ${userInput} for nodeId: ${node.id}`, true, true);
+            global.slashLogs(`Invalid button selection: ${userInput} for nodeId: ${node.id} — resending buttons`, true, true);
+            // Resend the button message so the user sees the options again
+            const message = VariableResolver.resolve(node.data.message, conversation);
+            const buttons = node.data.buttons.map((btn) => ({
+                id: btn.id,
+                title: VariableResolver.resolve(btn.title, conversation),
+            }));
+            await this.whatsappService.sendButtonMessage(conversation.user_phone, message, buttons);
+            await this.messageRepository.createMessage({
+                conversation_id: conversation.conversation_id,
+                flow_id: flow.flow_id,
+                sender: 'bot',
+                message_type: 'interactive',
+                message_text: message,
+                message_data: { type: 'button', buttons },
+                node_id: node.id,
+            });
             return {
-                nextNodeId: node.id, // Stay on same node
+                nextNodeId: node.id,
                 shouldWaitForInput: true,
             };
         }
@@ -272,9 +307,27 @@ class NodeProcessor {
         }
 
         if (!selectedItem) {
-            global.slashLogs(`Invalid list selection: ${userInput} for nodeId: ${node.id}`, true, true);
+            global.slashLogs(`Invalid list selection: ${userInput} for nodeId: ${node.id} — resending list`, true, true);
+            // Resend the list message so the user sees the options again
+            const message = VariableResolver.resolve(node.data.message, conversation);
+            const buttonText = VariableResolver.resolve(node.data.button_text, conversation);
+            await this.whatsappService.sendListMessage(
+                conversation.user_phone,
+                message,
+                buttonText,
+                node.data.sections
+            );
+            await this.messageRepository.createMessage({
+                conversation_id: conversation.conversation_id,
+                flow_id: flow.flow_id,
+                sender: 'bot',
+                message_type: 'interactive',
+                message_text: message,
+                message_data: { type: 'list', sections: node.data.sections },
+                node_id: node.id,
+            });
             return {
-                nextNodeId: node.id, // Stay on same node
+                nextNodeId: node.id,
                 shouldWaitForInput: true,
             };
         }
@@ -439,6 +492,157 @@ class NodeProcessor {
             default:
                 return true;
         }
+    }
+
+    /**
+     * Process TALK_TO_AGENT node
+     */
+    async processTalkToAgentNode(node, conversation, flow) {
+        const ConversationRepository = require('../repositories/ConversationRepository');
+        const MessageRepository      = require('../repositories/MessageRepository');
+        const conversationRepo       = new ConversationRepository();
+        const messageRepo            = new MessageRepository();
+
+        const waitMessage    = node.data?.waitMessage    || 'Please wait, connecting you to a support agent...';
+        const timeoutMessage = node.data?.timeoutMessage || 'Sorry, no agents are available right now. We will get back to you soon.';
+        const timeoutMs      = (node.data?.timeoutSeconds || 60) * 1000;
+        const fallbackNodeId = node.data?.fallbackNodeId || null;
+
+        // Send wait message to customer
+        await this.whatsappService.sendTextMessage(conversation.user_phone, waitMessage);
+        await messageRepo.createMessage({
+            conversation_id: conversation.conversation_id,
+            flow_id:         flow.flow_id,
+            sender:          MESSAGE_SENDER.BOT,
+            message_type:    'text',
+            message_text:    waitMessage,
+            node_id:         node.id,
+        });
+
+        // Update conversation status → PENDING_AGENT
+        await conversationRepo.setPendingAgent(conversation.conversation_id, fallbackNodeId);
+
+        // Store fallbackNodeId in session_data so socketHandlers can retrieve it later
+        const sessionData = conversation.session_data
+            ? (typeof conversation.session_data === 'string'
+                ? JSON.parse(conversation.session_data)
+                : { ...conversation.session_data })
+            : {};
+        sessionData.__pendingAgentFallbackNodeId = fallbackNodeId;
+        await conversationRepo.updateSessionData(conversation.conversation_id, JSON.stringify(sessionData));
+
+        // Load last few messages as preview for admin
+        const previewMessages = await messageRepo.getByConversation(conversation.conversation_id, 5);
+
+        // Broadcast agent request to ALL admins in the flow's live room
+        if (global.io) {
+            global.io
+                .to(`admin:live:${flow.flow_id}`)
+                .emit('admin:agent_request', {
+                    conversationId:  conversation.conversation_id,
+                    flowId:          flow.flow_id,
+                    customerPhone:   conversation.user_phone,
+                    customerName:    conversation.user_name || conversation.user_phone,
+                    nodeId:          node.id,
+                    fallbackNodeId,
+                    previewMessages,
+                    requestedAt:     new Date().toISOString(),
+                });
+        }
+
+        global.slashLogs(
+            `[TalkToAgent] Agent request emitted for conversation: ${conversation.conversation_id}, ` +
+            `timeout in ${timeoutMs / 1000}s, fallback: ${fallbackNodeId || 'end'}`,
+            true, true
+        );
+
+        // Schedule 60-second timeout
+        const timerId = setTimeout(async () => {
+            try {
+                global.pendingAgentTimers.delete(conversation.conversation_id);
+
+                //Verify the conversation is still PENDING (admin may have accepted just now)
+                const freshConvo = await conversationRepo.findById(conversation.conversation_id);
+                if (!freshConvo || freshConvo.status !== CONVERSATION_STATUS.PENDING_AGENT) {
+                    global.slashLogs(
+                        `[TalkToAgent] Timeout fired but conversation ${conversation.conversation_id} is no longer PENDING_AGENT — skipping.`,
+                        true, true
+                    );
+                    return;
+                }
+
+                global.slashLogs(
+                    `[TalkToAgent] Timeout: no admin accepted conversation ${conversation.conversation_id}. Running fallback.`,
+                    true, true
+                );
+
+                // Send timeout message to customer
+                await this.whatsappService.sendTextMessage(conversation.user_phone, timeoutMessage);
+                await messageRepo.createMessage({
+                    conversation_id: conversation.conversation_id,
+                    flow_id:         flow.flow_id,
+                    sender:          MESSAGE_SENDER.BOT,
+                    message_type:    'text',
+                    message_text:    timeoutMessage,
+                });
+
+                if (fallbackNodeId) {
+                    // Resume from fallback node — reset status to ACTIVE and set node
+                    await conversationRepo.updateStatus(conversation.conversation_id, CONVERSATION_STATUS.ACTIVE);
+                    await conversationRepo.updateCurrentNode(conversation.conversation_id, fallbackNodeId);
+
+                    // Notify admin panel that the request timed out
+                    if (global.io) {
+                        global.io
+                            .to(`admin:live:${flow.flow_id}`)
+                            .emit('admin:agent_request_timeout', {
+                                conversationId: conversation.conversation_id,
+                                reason: 'timeout',
+                            });
+                    }
+
+                    // Trigger bot to execute from the fallback node
+                    const FlowExecutor = require('./FlowExecutor');
+                    const executor = new FlowExecutor();
+                    await executor.executeFlow(
+                        { ...freshConvo, status: CONVERSATION_STATUS.ACTIVE, current_node_id: fallbackNodeId },
+                        flow.flow_id,
+                        null  // no user input — bot auto-runs from fallback node
+                    );
+                } else {
+                    // No fallback — end the conversation
+                    await conversationRepo.completeConversation(conversation.conversation_id);
+                    if (global.io) {
+                        global.io
+                            .to(`admin:live:${flow.flow_id}`)
+                            .emit('admin:agent_request_timeout', {
+                                conversationId: conversation.conversation_id,
+                                reason: 'timeout',
+                            });
+                        global.io
+                            .to(`admin:live:${flow.flow_id}`)
+                            .emit('admin:conversation_completed', {
+                                conversationId: conversation.conversation_id,
+                                status: 'completed',
+                            });
+                    }
+                }
+            } catch (err) {
+                global.slashLogs(`[TalkToAgent] Error during timeout handler: ${err.message}`, true, true);
+            }
+        }, timeoutMs);
+
+        // Store timer so socketHandlers can clear it on accept/reject
+        global.pendingAgentTimers.set(conversation.conversation_id, {
+            timerId,
+            flowId: flow.flow_id,
+        });
+
+        // Return: pause flow execution until admin accepts or timeout fires
+        return {
+            nextNodeId:        null, // do NOT auto-continue — agent or timeout drives next step
+            shouldWaitForInput: true,
+        };
     }
 }
 

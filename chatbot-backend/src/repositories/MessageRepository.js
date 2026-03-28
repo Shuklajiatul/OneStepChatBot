@@ -118,22 +118,47 @@ class MessageRepository extends BaseRepository {
     }
 
     /**
-     * Get last message in conversation
+     * Get last message in conversation (full record including message_data)
      */
     async getLastMessage(conversationId) {
         try {
-            const query = `
-        SELECT * FROM messages_by_conversation 
+            // Get the latest message ID from the index table
+            const indexQuery = `
+        SELECT message_id FROM messages_by_conversation 
         WHERE conversation_id = ? 
         LIMIT 1
       `;
-            const result = await this.db.execute(query, [conversationId]);
+            const indexResult = await this.db.execute(indexQuery, [conversationId]);
 
-            if (result.rows.length === 0) {
+            if (indexResult.rows.length === 0) {
                 return null;
             }
 
-            return this.mapRow(result.rows[0]);
+            const messageId = indexResult.rows[0].message_id;
+
+            //Fetch the full message (including message_data) from the main table
+            const fullQuery = `
+        SELECT * FROM ${this.tableName} 
+        WHERE message_id = ?
+      `;
+            const fullResult = await this.db.execute(fullQuery, [messageId]);
+
+            if (fullResult.rows.length === 0) {
+                return this.mapRow(indexResult.rows[0]);
+            }
+
+            const msg = this.mapRow(fullResult.rows[0]);
+
+            // Parse message_data if it's a JSON string
+            if (msg.message_data && typeof msg.message_data === 'string') {
+                try {
+                    msg.message_data = JSON.parse(msg.message_data);
+                } catch (e) {
+                    // Keep as string if parsing fails
+                }
+            }
+
+            return msg;
         } catch (error) {
             global.slashLogs(`Error getting last message ${error.message}`, true, true);
             throw error;

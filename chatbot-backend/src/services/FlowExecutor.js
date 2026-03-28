@@ -27,7 +27,7 @@ class FlowExecutor {
     /**
      * Process incoming message
      */
-    async processMessage(flowId, userPhone, userName, messageText, platformUserId, channel = 'whatsapp', isPreview = false, previewService = null) {
+    async processMessage(flowId, userPhone, userName, messageText, platformUserId, channel = 'whatsapp', isPreview = false, previewService = null, displayText = null) {
         try {
             global.slashLogs(`Processing message: ${JSON.stringify({ flowId, userPhone, messageText })}`, true, true);
 
@@ -65,6 +65,42 @@ class FlowExecutor {
                     }
 
                     return; // Stop here — agent handles response
+                }
+            }
+
+            // ── Pending Agent Bypass ───────────────────────────────────────────
+            // If no active conversation, check if the customer is waiting in the
+            // agent request queue (PENDING_AGENT). Save the message but do NOT run bot.
+            if (!conversation) {
+                const pendingConversation = await this.conversationRepository.findPendingAgentByPhone(userPhone, flowId);
+
+                if (pendingConversation) {
+                    global.slashLogs(`[PENDING AGENT] Message from ${userPhone} received while waiting for agent. Saving silently.`, true, true);
+
+                    // Save message so admin/agent sees it when they accept
+                    await this.messageRepository.createMessage({
+                        conversation_id: pendingConversation.conversation_id,
+                        flow_id: flowId,
+                        sender: MESSAGE_SENDER.USER,
+                        message_type: 'text',
+                        message_text: messageText,
+                    });
+
+                    // Also forward to admin live room so they see it in real-time
+                    if (global.io) {
+                        global.io
+                            .to(`admin:live:${flowId}`)
+                            .emit('admin:incoming_message', {
+                                conversationId: pendingConversation.conversation_id,
+                                from: userPhone,
+                                name: userName,
+                                message: messageText,
+                                type: 'text',
+                                timestamp: new Date().toISOString(),
+                            });
+                    }
+
+                    return; // Bot does NOT run — wait for agent accept or timeout
                 }
             }
 
@@ -111,15 +147,18 @@ class FlowExecutor {
                 message_text: messageText,
             });
 
-            // ── Broadcast incoming message to admin live panel 
+            // ── Broadcast incoming message to admin live panel
+            // Use displayText (button/list title) when available, fall back to messageText (raw id or typed text)
+            const adminDisplayMessage = displayText || messageText;
             if (global.io && !isPreview) {
+                global.slashLogs(`Broadcasting incoming message to admin live panel for conversationId: ${conversation.conversation_id}`, true, true);
                 global.io
                     .to(`admin:live:${flowId}`)
                     .emit('admin:incoming_message', {
                         conversationId: conversation.conversation_id,
                         from: userPhone,
                         name: userName || userPhone,
-                        message: messageText,
+                        message: adminDisplayMessage,
                         type: 'text',
                         timestamp: new Date().toISOString(),
                     });
@@ -279,8 +318,12 @@ class FlowExecutor {
                         currentNodeId
                     );
                 } else {
-                    // End of flow
-                    await this.completeConversation(conversation.conversation_id, flowId);
+                    // nextNodeId is null — either end of flow OR a node that pauses execution
+                    // (e.g. talk_to_agent). Only complete the conversation if we're NOT
+                    // waiting for external input.
+                    if (!result.shouldWaitForInput) {
+                        await this.completeConversation(conversation.conversation_id, flowId);
+                    }
                     shouldContinue = false;
                     break;
                 }
@@ -313,6 +356,16 @@ class FlowExecutor {
 
         await this.conversationRepository.completeConversation(conversationId);
         await this.analyticsRepository.trackConversationCompleted(flowId);
+
+        // Notify admin live panel to remove the conversation card
+        if (global.io && flowId) {
+            global.io
+                .to(`admin:live:${flowId}`)
+                .emit('admin:conversation_completed', {
+                    conversationId,
+                    status: 'completed',
+                });
+        }
     }
 
     /**
@@ -323,6 +376,16 @@ class FlowExecutor {
 
         await this.conversationRepository.abandonConversation(conversationId);
         await this.analyticsRepository.trackConversationAbandoned(flowId);
+
+        // Notify admin live panel to remove the conversation card
+        if (global.io && flowId) {
+            global.io
+                .to(`admin:live:${flowId}`)
+                .emit('admin:conversation_completed', {
+                    conversationId,
+                    status: 'abandoned',
+                });
+        }
     }
 
     /**
