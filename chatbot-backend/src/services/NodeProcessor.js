@@ -10,10 +10,9 @@ const { setSessionVariable, updateSessionData } = require('../models/Conversatio
 // Allows socketHandlers to cancel the timeout when an admin accepts
 global.pendingAgentTimers = global.pendingAgentTimers || new Map();
 
-/**
- * Node Processor Service
- * Processes different node types and determines next actions
- */
+// Node Processor Service
+// Processes different node types and determines next actions
+
 class NodeProcessor {
     constructor(whatsappService, messageRepository, collectedDataRepository) {
         this.whatsappService = whatsappService;
@@ -21,9 +20,7 @@ class NodeProcessor {
         this.collectedDataRepository = collectedDataRepository;
     }
 
-    /**
-     * Process a node and return next node ID
-     */
+    // Process a node and return next node ID
     async processNode(node, conversation, flow, userInput = null) {
 
         global.slashLogs(`Processing node: ${node.id} for conversationId: ${conversation.conversation_id}`, true, true);
@@ -62,9 +59,7 @@ class NodeProcessor {
         }
     }
 
-    /**
-     * Process MESSAGE node
-     */
+    // Process MESSAGE node
     async processMessageNode(node, conversation, flow) {
         const message = VariableResolver.resolve(node.data.message, conversation);
 
@@ -110,9 +105,7 @@ class NodeProcessor {
         };
     }
 
-    /**
-     * Process QUESTION node
-     */
+    // Process QUESTION node
     async processQuestionNode(node, conversation, flow, userInput) {
         // If no user input, send the question and wait
         if (!userInput) {
@@ -182,9 +175,7 @@ class NodeProcessor {
         };
     }
 
-    /**
-     * Process BUTTONS node
-     */
+    // Process BUTTONS node
     async processButtonsNode(node, conversation, flow, userInput) {
         // If no user input, send the buttons and wait
         if (!userInput) {
@@ -267,9 +258,7 @@ class NodeProcessor {
         };
     }
 
-    /**
-     * Process LIST node
-     */
+    // Process LIST node
     async processListNode(node, conversation, flow, userInput) {
         // If no user input, send the list and wait
         if (!userInput) {
@@ -361,9 +350,7 @@ class NodeProcessor {
         };
     }
 
-    /**
-     * Process CONDITION node
-     */
+    // Process CONDITION node
     async processConditionNode(node, conversation, flow) {
         const nextNodeId = ConditionEvaluator.evaluateConditions(
             node.data.conditions,
@@ -377,9 +364,7 @@ class NodeProcessor {
         };
     }
 
-    /**
-     * Process WEBHOOK node 
-     */
+    // Process WEBHOOK node 
     async processWebhookNode(node, conversation, flow) {
         try {
             // Get collected data
@@ -433,9 +418,7 @@ class NodeProcessor {
         }
     }
 
-    /**
-     * Process DELAY node
-     */
+    // Process DELAY node
     async processDelayNode(node, conversation, flow) {
         const delayMs = node.data.delay_seconds * 1000;
         global.slashLogs(`Delaying for ${node.data.delay_seconds} seconds for conversationId: ${conversation.conversation_id}`, true, true);
@@ -447,9 +430,7 @@ class NodeProcessor {
         };
     }
 
-    /**
-     * Process END node
-     */
+    // Process END node
     async processEndNode(node, conversation, flow) {
         // Send final message if specified
         if (node.data.message) {
@@ -472,16 +453,14 @@ class NodeProcessor {
         };
     }
 
-    /**
-     * Validate user input
-     */
+    // Validate user input
     validateInput(input, validationType) {
         switch (validationType) {
             case 'email':
                 return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
 
             case 'phone':
-                return /^\+?[1-9]\d{1,14}$/.test(input);
+                return /^[789]\d{9}$/.test(input);
 
             case 'number':
                 return !isNaN(parseFloat(input));
@@ -494,9 +473,7 @@ class NodeProcessor {
         }
     }
 
-    /**
-     * Process TALK_TO_AGENT node
-     */
+    // Process TALK_TO_AGENT node
     async processTalkToAgentNode(node, conversation, flow) {
         const ConversationRepository = require('../repositories/ConversationRepository');
         const MessageRepository      = require('../repositories/MessageRepository');

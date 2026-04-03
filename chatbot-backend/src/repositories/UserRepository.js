@@ -19,22 +19,14 @@ class UserRepository extends BaseRepository {
         return 'user_id';
     }
 
-    /**
-     * Create a new user
-     * param {Object} userData - User data
-     * returns {Promise<Object>} Created user (without sensitive data)
-     */
+    // Create a new user
     async createUser(userData) {
         const user = createUser(userData);
         const createdUser = await this.create(user);
         return getSafeUser(createdUser);
     }
 
-    /**
-     * Find user by email
-     * param {string} email - User email
-     * returns {Promise<Object|null>} User or null
-     */
+    // Find user by email
     async findByEmail(email) {
         try {
             const query = `SELECT * FROM ${this.tableName} WHERE email = ? ALLOW FILTERING`;
@@ -51,12 +43,7 @@ class UserRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Update user WhatsApp configuration
-     * @param {string} userId - User ID
-     * @param {Object} whatsappConfig - WhatsApp configuration
-     * @returns {Promise<Object>} Updated user
-     */
+    // Update user WhatsApp configuration
     async updateWhatsAppConfig(userId, whatsappConfig) {
         const updateData = {};
 
@@ -74,12 +61,7 @@ class UserRepository extends BaseRepository {
         return getSafeUser(updatedUser);
     }
 
-    /**
-     * Update user Instagram configuration
-     * @param {string} userId - User ID
-     * @param {Object} instagramConfig - Instagram configuration
-     * @returns {Promise<Object>} Updated user
-     */
+    // Update user Instagram configuration
     async updateInstagramConfig(userId, instagramConfig) {
         const updateData = {};
 
@@ -94,13 +76,7 @@ class UserRepository extends BaseRepository {
         return getSafeUser(updatedUser);
     }
 
-    /**
-     * Update user plan
-     * @param {string} userId - User ID
-     * @param {string} plan - Plan name
-     * @param {Date} expiresAt - Plan expiration date
-     * @returns {Promise<Object>} Updated user
-     */
+    // Update user plan
     async updatePlan(userId, plan, expiresAt) {
         const updatedUser = await this.update(userId, {
             plan,
@@ -109,11 +85,7 @@ class UserRepository extends BaseRepository {
         return getSafeUser(updatedUser);
     }
 
-    /**
-     * Increment flow count
-     * param {string} userId - User ID
-     * returns {Promise<void>}
-     */
+    // Increment flow count
     async incrementFlowCount(userId) {
         try {
             const user = await this.findById(userId);
@@ -127,11 +99,7 @@ class UserRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Decrement flow count
-     * param {string} userId - User ID
-     * returns {Promise<void>}
-     */
+    // Decrement flow count
     async decrementFlowCount(userId) {
         try {
             const user = await this.findById(userId);
@@ -145,11 +113,7 @@ class UserRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Increment conversation count
-     * param {string} userId - User ID
-     * returns {Promise<void>}
-     */
+    // Increment conversation count
     async incrementConversationCount(userId) {
         try {
             const user = await this.findById(userId);
@@ -163,17 +127,13 @@ class UserRepository extends BaseRepository {
         }
     }
 
-    /**
-     * Get user with safe data (override to return safe user by default)
-     */
+    // Get user with safe data (override to return safe user by default)
     async findById(id) {
         const user = await super.findById(id);
         return user ? user : null; // Return full user for internal operations
     }
 
-    /**
-     * Get safe user by ID (for API responses)
-     */
+    // Get safe user by ID (for API responses)
     async getSafeUserById(id) {
         const user = await this.findById(id);
         return user ? getSafeUser(user) : null;

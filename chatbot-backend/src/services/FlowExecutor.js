@@ -10,10 +10,8 @@ const { parseFlowData }                       = require('../models/Flow');
 const { CONVERSATION_STATUS, MESSAGE_SENDER } = require('../config/constants');
 const ProfanityService                        = require('./ProfanityService');
 
-/**
- * Flow Executor Service
- * Core engine that executes chatbot flows
- */
+// Flow Executor Service
+// Core engine that executes chatbot flows
 
 class FlowExecutor {
     constructor() {
@@ -24,9 +22,7 @@ class FlowExecutor {
         this.analyticsRepository     = new AnalyticsRepository();
     }
 
-    /**
-     * Process incoming message
-     */
+    // Process incoming message
     async processMessage(flowId, userPhone, userName, messageText, platformUserId, channel = 'whatsapp', isPreview = false, previewService = null, displayText = null) {
         try {
             global.slashLogs(`Processing message: ${JSON.stringify({ flowId, userPhone, messageText })}`, true, true);
@@ -348,9 +344,7 @@ class FlowExecutor {
         }
     }
 
-    /**
-     * Complete a conversation
-     */
+    // Complete a conversation
     async completeConversation(conversationId, flowId) {
         global.slashLogs(`Completing conversation for conversationId: ${conversationId} and flowId: ${flowId}`, true, true);
 
@@ -368,9 +362,7 @@ class FlowExecutor {
         }
     }
 
-    /**
-     * Abandon a conversation (timeout or error)
-     */
+    // Abandon a conversation (timeout or error)
     async abandonConversation(conversationId, flowId) {
         global.slashLogs(`Abandoning conversation for conversationId: ${conversationId} and flowId: ${flowId}`, true, true);
 
@@ -388,9 +380,7 @@ class FlowExecutor {
         }
     }
 
-    /**
-     * Handle human takeover
-     */
+    // Handle human takeover
     async handleHumanTakeover(conversationId) {
         
         global.slashLogs(`Human takeover initiated for conversationId: ${conversationId}`, true, true);

@@ -1,8 +1,7 @@
 const { HTTP_STATUS, ERROR_CODES } = require('../config/constants');
 
-/**
- * Base Error class for all custom errors
- */
+// Base Error class for all custom errors
+
 class AppError extends Error {
     constructor(message, statusCode, errorCode, isOperational = true) {
         super(message);
@@ -25,9 +24,8 @@ class AppError extends Error {
     }
 }
 
-/**
- * Validation Error - 400
- */
+// Validation Error - 400
+
 class ValidationError extends AppError {
     constructor(message, details = null) {
         super(message, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
@@ -46,9 +44,8 @@ class ValidationError extends AppError {
     }
 }
 
-/**
- * Not Found Error - 404
- */
+// Not Found Error - 404
+
 class NotFoundError extends AppError {
     constructor(resource, identifier = null) {
         const message = identifier
@@ -60,45 +57,40 @@ class NotFoundError extends AppError {
     }
 }
 
-/**
- * Authentication Error - 401
- */
+// Authentication Error - 401
+
 class AuthenticationError extends AppError {
     constructor(message = 'Authentication failed') {
         super(message, HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.UNAUTHORIZED);
     }
 }
 
-/**
- * Authorization Error - 403
- */
+// Authorization Error - 403
+
 class AuthorizationError extends AppError {
     constructor(message = 'Access forbidden') {
         super(message, HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
     }
 }
 
-/**
- * Conflict Error - 409
- */
+// Conflict Error - 409
+
 class ConflictError extends AppError {
     constructor(message) {
         super(message, HTTP_STATUS.CONFLICT, ERROR_CODES.CONFLICT);
     }
 }
 
-/**
- * Rate Limit Error - 429
- */
+// Rate Limit Error - 429
+
 class RateLimitError extends AppError {
     constructor(message = 'Too many requests') {
         super(message, HTTP_STATUS.TOO_MANY_REQUESTS, ERROR_CODES.RATE_LIMIT_EXCEEDED);
     }
 }
 
-/**
- * Database Error - 500
- */
+// Database Error - 500
+
 class DatabaseError extends AppError {
     constructor(message, originalError = null) {
         super(message, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.DATABASE_ERROR);
@@ -106,9 +98,8 @@ class DatabaseError extends AppError {
     }
 }
 
-/**
- * External API Error - 500
- */
+// External API Error - 500
+
 class ExternalAPIError extends AppError {
     constructor(service, message, statusCode = null) {
         super(
@@ -121,9 +112,8 @@ class ExternalAPIError extends AppError {
     }
 }
 
-/**
- * Internal Error - 500
- */
+// Internal Error - 500
+
 class InternalError extends AppError {
     constructor(message = 'Internal server error') {
         super(message, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.INTERNAL_ERROR);

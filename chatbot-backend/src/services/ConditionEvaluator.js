@@ -1,14 +1,10 @@
 const logger = require('../config/logger');
 const { parseSessionData } = require('../models/Conversation');
 
-/**
- * Condition Evaluator Service
- * Evaluates conditional expressions for routing
- */
 class ConditionEvaluator {
-    /**
-     * Evaluate a condition
-     */
+    
+    // Evaluate a condition
+
     static evaluate(condition, conversation) {
         try {
             const sessionData = parseSessionData(conversation);
@@ -21,9 +17,7 @@ class ConditionEvaluator {
         }
     }
 
-    /**
-     * Evaluate multiple conditions and return the first matching next node
-     */
+    // Evaluate multiple conditions and return the first matching next node
     static evaluateConditions(conditions, defaultNext, conversation) {
         for (const condition of conditions) {
             if (this.evaluate(condition, conversation)) {
@@ -34,9 +28,7 @@ class ConditionEvaluator {
         return defaultNext;
     }
 
-    /**
-     * Get variable value from session data
-     */
+    // Get variable value from session data
     static getVariableValue(sessionData, variableName) {
         const parts = variableName.split('.');
         let value = sessionData;
@@ -52,9 +44,7 @@ class ConditionEvaluator {
         return value;
     }
 
-    /**
-     * Compare two values using an operator
-     */
+    // Compare two values using an operator
     static compareValues(leftValue, operator, rightValue) {
         // Convert to strings for comparison if needed
         const left = leftValue !== null && leftValue !== undefined ? String(leftValue) : '';
@@ -118,17 +108,13 @@ class ConditionEvaluator {
         }
     }
 
-    /**
-     * Convert value to number
-     */
+    // Convert value to number
     static toNumber(value) {
         const num = parseFloat(value);
         return isNaN(num) ? 0 : num;
     }
 
-    /**
-     * Validate condition structure
-     */
+    // Validate condition structure
     static validateCondition(condition) {
         if (!condition.variable) {
             return { isValid: false, error: 'Condition must have a variable' };

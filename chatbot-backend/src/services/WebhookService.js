@@ -3,17 +3,13 @@ const logger = require('../config/logger');
 const { retryWithBackoff } = require('../utils/helpers');
 const { ExternalAPIError } = require('../utils/errors');
 
-/**
- * Webhook Service
- * Handles external webhook calls with retry logic
- */
+//   Handles external webhook calls with retry logic
+
 class WebhookService {
     // Call a webhook
     static async callWebhook(webhookConfig, conversation, additionalData = {}) {
         const { url, method = 'POST', headers = {}, body = {}, params = {}, path_variables = {} } = webhookConfig;
 
-        // Substitute :key segments in the URL with resolved path_variables
-        // e.g. "https://api.example.com/flows/:id" + { id: "abc" } → "https://api.example.com/flows/abc"
         const resolvedUrl = Object.keys(path_variables).length > 0
             ? Object.entries(path_variables).reduce(
                 (acc, [key, value]) => acc.replace(`:${key}`, encodeURIComponent(value)),
@@ -23,6 +19,7 @@ class WebhookService {
 
         try {
             global.slashLogs(`Calling webhook ${resolvedUrl}: ${JSON.stringify({ webhookConfig, conversation, additionalData })}`, true, true);
+            global.slashLogs(`Webhook body: ${JSON.stringify({ ...body, ...additionalData })}`, true, true);
 
             const response = await retryWithBackoff(
                 async () => {
@@ -65,7 +62,8 @@ class WebhookService {
             user_phone: conversation.user_phone,
             user_name: conversation.user_name,
             channel: conversation.channel,
-            collected_data: collectedData,
+            // collected_data: collectedData,
+            field_values: collectedData,
             started_at: conversation.started_at,
         };
 

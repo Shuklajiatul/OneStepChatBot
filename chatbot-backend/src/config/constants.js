@@ -1,7 +1,3 @@
-/**
- * Constants used throughout the application
- */
-
 // Node Types
 const NODE_TYPES = {
     MESSAGE: 'message',

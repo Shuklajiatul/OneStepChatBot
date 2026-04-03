@@ -136,6 +136,17 @@ const createTables = async () => {
       metric_value COUNTER,
       PRIMARY KEY ((flow_id, date), metric_name)
     );`,
+
+        // Media assets table (self-hosted media for flow nodes)
+        `CREATE TABLE IF NOT EXISTS media_assets (
+      media_id   UUID PRIMARY KEY,
+      user_id    UUID,
+      file_name  TEXT,
+      mime_type  TEXT,
+      file_size  INT,
+      file_data  BLOB,
+      created_at TIMESTAMP
+    );`,
     ];
 
     for (const tableQuery of tables) {
@@ -173,6 +184,9 @@ const createIndexes = async () => {
         // Message indexes
         'CREATE INDEX IF NOT EXISTS messages_by_flow ON messages (flow_id);',
         'CREATE INDEX IF NOT EXISTS messages_by_conversation ON messages (conversation_id);',
+
+        // Media indexes
+        'CREATE INDEX IF NOT EXISTS media_by_user ON media_assets (user_id);',
     ];
 
     for (const indexQuery of indexes) {
